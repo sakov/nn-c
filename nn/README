@@ -7,7 +7,7 @@ Natural Neighbours interpolation utility "nnbathy".
 
 `nn' is a free software. See LICENSE for details.
 
-Please send comments and bugs to Pavel.Sakov@nersc.no .
+Please send comments and bugs to Pavel.Sakov<at>gmail.com .
 
 This code has been developed and used mainly on pc-linux platform, however,
 it should compile on other platforms. Beware that the configure script 
@@ -52,9 +52,7 @@ This library uses the following public code/algorithms:
 Many thanks to David A. Paige, Maciek Sieczka, Nick Cahill and John Gerschwitz 
 for submitting bug reports and/or data for examples.
 
-Please acknowledge the use of this software in publications, e.g.:
-"<We, this study, ...> used Natural Neighbours interpolation code "nn" version
-<version number> written by Pavel Sakov".
+Please acknowledge the use of this software in publications.
 
 Good luck!
 Pavel Sakov
