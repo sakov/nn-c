@@ -213,7 +213,7 @@ static double minell_calcinsideeval(minell* me)
     double Z = (u * s - 2.0 * v * t) * u + v * v * r;
     double DZ = 2.0 * (u * Du * s + v * Dv * r - Du * v * t - u * Dv * t - u * v * Dt) + u * u * Ds;
     double delta = 3.0 * Dd * Z + d * (2.0 * d * Dw - Dd * w - 2.0 * DZ);
-    double ballpark =  fabs(3.0 * Dd * Z) + fabs(d) * (fabs(2.0 * d * Dw) + fabs(Dd * w) + fabs(2.0 * DZ));
+    double ballpark = fabs(3.0 * Dd * Z) + fabs(d) * (fabs(2.0 * d * Dw) + fabs(Dd * w) + fabs(2.0 * DZ));
 
     return r * delta / ballpark;
 }
@@ -242,7 +242,7 @@ static int minell_containspoint(minell* me, point* p)
         if (!isellipse(me, p)) {
             double lambda = 2.0 * me->gamma - me->beta;
             double mu = 2.0 * me->alpha - me->beta;
-	    double ballpark = fabs(mu * me->lambda0) + fabs(lambda * me->mu0);
+            double ballpark = fabs(mu * me->lambda0) + fabs(lambda * me->mu0);
 
             return mu * me->lambda0 - lambda * me->mu0 <= EPS * ballpark;
         } else
@@ -253,7 +253,7 @@ static int minell_containspoint(minell* me, point* p)
         double C1 = (me->dy12 * x - me->dx12 * y + me->d12) * (me->dy34 * x - me->dx34 * y + me->d34) * me->lambda0;
         double C2 = (me->dy23 * x - me->dx23 * y + me->d23) * (me->dy41 * x - me->dx41 * y + me->d41) * me->mu0;
         double r = me->lambda0 * me->r1 + me->mu0 * me->r2;
-	double ballpark = (fabs(me->dy12 * x) + fabs(me->dx12 * y) + fabs(me->d12)) * (fabs(me->dy34 * x) + fabs(me->dx34 * y) + fabs(me->d34)) * fabs(me->lambda0) + (fabs(me->dy23 * x) + fabs(me->dx23 * y) + fabs(me->d23)) * (fabs(me->dy41 * x) + fabs(me->dx41 * y) + fabs(me->d41)) * fabs(me->mu0);
+        double ballpark = (fabs(me->dy12 * x) + fabs(me->dx12 * y) + fabs(me->d12)) * (fabs(me->dy34 * x) + fabs(me->dx34 * y) + fabs(me->d34)) * fabs(me->lambda0) + (fabs(me->dy23 * x) + fabs(me->dx23 * y) + fabs(me->d23)) * (fabs(me->dy41 * x) + fabs(me->dx41 * y) + fabs(me->d41)) * fabs(me->mu0);
 
         me->minell_eval5_count++;
 
@@ -717,21 +717,21 @@ static void minell_center2human(minell* me)
     double sqr = hypot(diff, 2.0 * me->t);
     double a = (sum - sqr) / 2.0;
     double b = (sum + sqr) / 2.0;
-    
+
     me->a = sqrt(1.0 / a);
     me->b = sqrt(1.0 / b);
 
     if (a == b) {
-	me->theta = 0.0;
-	return;
+        me->theta = 0.0;
+        return;
     }
 
-    me->theta = - asin(2.0 * me->t / sqr) / 2.0;
-    if (me->s < me->r) { /* cos(2 theta) < 0 */
-	if (me->theta > 0)
-	    me->theta = M_PI / 2.0 - me->theta;
-	else
-	    me->theta = - M_PI / 2.0 - me->theta;
+    me->theta = -asin(2.0 * me->t / sqr) / 2.0;
+    if (me->s < me->r) {        /* cos(2 theta) < 0 */
+        if (me->theta > 0)
+            me->theta = M_PI / 2.0 - me->theta;
+        else
+            me->theta = -M_PI / 2.0 - me->theta;
     }
 }
 
@@ -762,7 +762,7 @@ static void minell_calcprm(minell* me)
         me->b = 0.0;
         me->theta = atan((ps[0]->y - ps[1]->y) / (ps[0]->x - ps[1]->x));
     } else if (me->n == 3) {
-	minell_center2human(me);
+        minell_center2human(me);
     } else {
         if (me->n == 4)
             minell_findfifthpoint(me);
@@ -792,8 +792,8 @@ static void minell_calcprm(minell* me)
 
             assert(me->r > 0.0);
             assert(me->s > 0.0);
-	}
-	minell_center2human(me);
+        }
+        minell_center2human(me);
     }
 }
 

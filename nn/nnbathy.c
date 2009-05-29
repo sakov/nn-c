@@ -201,12 +201,12 @@ static specs* specs_create(void)
     return s;
 }
 
-void specs_destroy(specs * s)
+void specs_destroy(specs* s)
 {
     free(s);
 }
 
-static void parse_commandline(int argc, char* argv[], specs * s)
+static void parse_commandline(int argc, char* argv[], specs* s)
 {
     int i;
 
@@ -622,13 +622,13 @@ int main(int argc, char* argv[])
         ndone++;
 
         if (s->npoints > 0) {
-	    snprintf(percent, STRBUFSIZE, "  %5.1f%% done\r", 100.0 * ndone / s->npoints);
-	    if (strcmp(percent, percent_prev) != 0) {
-		strcpy(percent_prev, percent);
-		fprintf(stderr, "%s", percent);
-		fflush(stderr);
-	    }
-	}
+            snprintf(percent, STRBUFSIZE, "  %5.1f%% done\r", 100.0 * ndone / s->npoints);
+            if (strcmp(percent, percent_prev) != 0) {
+                strcpy(percent_prev, percent);
+                fprintf(stderr, "%s", percent);
+                fflush(stderr);
+            }
+        }
     }
     if (s->npoints > 0)
         fprintf(stderr, "                \r");
