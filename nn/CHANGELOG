@@ -1,5 +1,6 @@
 v. 1.81, 29 May 2009
-        -- Added flag NN_SERIAL to the default compiler options.
+        -- Added flag NN_SERIAL to the default compiler options for building 
+           nnbathy.
 v. 1.80, 12 December 2008
         -- Changed the license for compatibility with GPL. Added the file
            LICENSE.
