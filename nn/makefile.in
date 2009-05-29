@@ -70,6 +70,7 @@ all: libnn.a $(PROGRAMS)
 minell: minell.c
 	$(CC) -o minell minell.c -DME_STANDALONE $(CFLAGS) -I. $(LDFLAGS) $(MLIB)
 
+nnbathy: override CFLAGS+=-DNN_SERIAL
 nnbathy: libnn.a nnbathy.c
 	$(CC) -o nnbathy nnbathy.c $(CFLAGS) -I. $(LDFLAGS) libnn.a $(MLIB)
 

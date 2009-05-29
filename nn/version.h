@@ -14,6 +14,6 @@
 #if !defined(_VERSION_H)
 #define _VERSION_H
 
-char* nn_version = "1.80";
+char* nn_version = "1.81";
 
 #endif
