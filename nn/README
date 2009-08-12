@@ -7,6 +7,8 @@ Natural Neighbours interpolation utility "nnbathy".
 
 `nn' is a free software. See LICENSE for details.
 
+(Note that however that `triangle' is not a free softwre.)
+
 Please send comments and bugs to Pavel.Sakov<at>gmail.com .
 
 
@@ -16,7 +18,7 @@ currently does not do much more than a couple of checks. It should be viewed
 rather as a prototype for the future than a multi-platform configuration tool.
 
 `nn' was initially based on the Dave Watson's `nngridr'. Over time, there were
-numerous improvements of this original version. You mau see comparison of 
+numerous improvements of this original version. You may see comparison of 
 performance of a rather old version `nn' with `nngridr' in
 
   Quanfu Fan, Alon Efrat, Vladlen Koltun, Shankar Krishnan, and 
