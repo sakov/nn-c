@@ -1,3 +1,6 @@
+v. 1.82, 12 May 2010
+        -- Modified "configure" to check whether compiler option 
+           "-fno-force-mem" is supported.
 v. 1.81, 29 May 2009
         -- Added flag NN_SERIAL to the default compiler options for building 
            nnbathy.
