@@ -1,6 +1,6 @@
 v. 1.83, 19 January 2012
         -- A cosmetic change to avoid compiler warning for delaunay.c
-        -- Another cosmetic chanfge - updated the list of structure names to be
+        -- Another cosmetic change - updated the list of structure names to be
            recognised by `indent' when running "make indent"
 v. 1.82, 12 May 2010
         -- Modified "configure" to check whether compiler option 
