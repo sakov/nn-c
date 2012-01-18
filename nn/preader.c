@@ -79,7 +79,7 @@ static grid* grid_create(double xmin, double xmax, double ymin, double ymax, int
     return g;
 }
 
-static point* grid_getpoint(grid * g)
+static point* grid_getpoint(grid* g)
 {
     if (g->n >= g->nmax)
         return NULL;
@@ -95,7 +95,7 @@ static point* grid_getpoint(grid * g)
     return &g->p;
 }
 
-static void grid_destroy(grid * g)
+static void grid_destroy(grid* g)
 {
     free(g);
 }
@@ -129,7 +129,7 @@ static reader* reader_create(char* fname)
     return r;
 }
 
-static point* reader_getpoint(reader * r)
+static point* reader_getpoint(reader* r)
 {
     char buf[BUFSIZE];
     char seps[] = " ,;\t";
@@ -165,7 +165,7 @@ static point* reader_getpoint(reader * r)
     }
 }
 
-static void reader_destroy(reader * r)
+static void reader_destroy(reader* r)
 {
     if (r->f != stdin && r->f != NULL)
         if (fclose(r->f) != 0)
@@ -194,7 +194,7 @@ preader* preader_create2(char* fname)
     return pr;
 }
 
-point* preader_getpoint(preader * pr)
+point* preader_getpoint(preader* pr)
 {
     if (pr->g != NULL)
         return grid_getpoint(pr->g);
@@ -202,7 +202,7 @@ point* preader_getpoint(preader * pr)
         return reader_getpoint(pr->r);
 }
 
-void preader_destroy(preader * pr)
+void preader_destroy(preader* pr)
 {
     if (pr->g != NULL)
         grid_destroy(pr->g);

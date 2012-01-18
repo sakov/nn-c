@@ -23,7 +23,7 @@
  *
  *****************************************************************************/
 
-#define ANSI_DECLARATORS /* for triangle.h */
+#define ANSI_DECLARATORS        /* for triangle.h */
 
 #include <stdlib.h>
 #include <stdio.h>
