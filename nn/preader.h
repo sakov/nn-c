@@ -21,7 +21,7 @@ typedef struct preader preader;
 
 preader* preader_create1(double xmin, double xmax, double ymin, double ymax, int nx, int ny);
 preader* preader_create2(char* fname);
-point* preader_getpoint(preader * pr);
-void preader_destroy(preader * pr);
+point* preader_getpoint(preader* pr);
+void preader_destroy(preader* pr);
 
 #endif

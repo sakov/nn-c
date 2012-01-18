@@ -145,7 +145,7 @@ ex6clean:
 distclean: clean configclean ex1clean ex2clean ex3clean ex4clean ex5clean ex6clean
 
 indent:
-	indent -T FILE -T NN_ALGORITHM -T point -T delaunay -T lpi -T nnpi -T nnhpi -T indexedpoint -T nnai -T ht_bucket -T hashtable -T istack -T triangle -T triangle_neighbours -T circle -T nn_weights -T lweights -T minell -T specs $(LIBSRC) $(UTILSRC) $(HEADERS)
+	indent -T FILE -T NN_ALGORITHM -T point -T delaunay -T lpi -T nnpi -T nnhpi -T indexedpoint -T nnai -T ht_bucket -T hashtable -T istack -T triangle -T triangle_neighbours -T circle -T nn_weights -T lweights -T minell -T specs -T reader -T preader -T grid $(LIBSRC) $(UTILSRC) $(HEADERS)
 	rm -f *~
 
 dist:
