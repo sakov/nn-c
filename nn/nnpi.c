@@ -242,7 +242,7 @@ static void nnpi_triangle_process(nnpi* nn, point* p, int i)
         if (isnan(det)) {
             /*
              * Here, if the determinant is NaN, then the interpolation point
-             * lies almost in between two data points. This case is difficult to
+             * is almost in between two data points. This case is difficult to
              * handle robustly because the areas (determinants) calculated by
              * Watson's algorithm are obtained as a diference between two big
              * numbers. This case is handled here in the following way.
