@@ -11,22 +11,19 @@
  *                 -- Natural Neighbours Point Interpolator
  *                 -- Natural Neighbours Point Hashing Interpolator
  *
- * Description:    `nnpi' -- "Natural Neighbours Point
- *                 Interpolator" -- is a structure for conducting Natural
- *                 Neighbours interpolation on a given data on a
- *                 "point-to-point" basis. Because it involves weight
- *                 calculation for each next output point, it is not
- *                 particularly suitable for consequitive interpolations on
- *                 the same set of observation points -- use
- *                 `nnhpi' or `nnai'
- *                 in these cases.
+ * Description:    `nnpi' -- "Natural Neighbours Point Interpolator" -- is a
+ *                 structure for conducting Natural Neighbours interpolation on
+ *                 a "point-to-point" basis. Because it calculates weights for
+ *                 each output point, `nnpi' does not take advantage of
+ *                 repeated interpolations when locations of input and output
+ *                 data points do not change -- use `nnhpi' or `nnai' in these
+ *                 cases.
  *
- *                 `nnhpi' is a structure for
- *                 conducting consequitive Natural Neighbours interpolations
- *                 on a given spatial data set in a random sequence of points
- *                 from a set of finite size, taking advantage of repeated
- *                 interpolations in the same point. It allows to modify Z
- *                 coordinate of data in between interpolations.
+ *                 `nnhpi' -- "Natural Neighbours Hashing Point Interpolator"
+ *                 is a structure for conducting repeated Natural Neighbours
+ *                 interpolations when (i) input data points have constant
+ *                 locations and (ii) locations of output data points are often
+ *                 repeated.
  *
  *                 For Sibson NN interpolation this code uses Dave Watson's
  *                 algorithm (Watson, D. F. nngridr: An implementation of
