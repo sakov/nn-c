@@ -10,12 +10,12 @@
  * Purpose:        Code for:
  *                 -- Natural Neighbours Array Interpolator
  *
- * Description:    `nnai' is a tructure for conducting
- *                 consequitive Natural Neighbours interpolations on a given
- *                 spatial data set in a given array of points. It allows to
- *                 modify Z coordinate of data in between interpolations.
- *                 `nnai' is the fastest of the three Natural
- *                 Neighbours interpolators in `nn' library.
+ * Description:    `nnai' is a structure for conducting repeated Natural
+ *                 Neighbours interpolations when locations of input and output
+ *                 data points do not change. It re-uses interpolation weights
+ *                 calculated during initialisation and can be substantially
+ *                 faster than the more generic Natural Neighbours Point
+ *                 Interpolator `nnpi'.
  *
  * Revisions:      None
  *
