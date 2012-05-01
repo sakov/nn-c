@@ -1,3 +1,5 @@
+v. 1.85, 1 May 2012
+        -- A change in nan.h to distinguish between gcc and icc
 v. 1.84, 25 January 2012
         -- Cosmetic: modified descriptions of nnai and nnhpi.
 v. 1.83, 19 January 2012

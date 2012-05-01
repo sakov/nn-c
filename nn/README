@@ -1,6 +1,6 @@
 nn
 Natural Neighbours interpolation library
-Version 1.84
+Version 1.85
 
 Provides Natural Neighbours interpolation library "libnn.a" and a command line
 Natural Neighbours interpolation utility "nnbathy".
