@@ -17,4 +17,4 @@ to using double precision calculations. For the underlying Delaunay triangulatio
 [triangle](http://www.cs.cmu.edu/~quake/triangle.html).
 
 
-Checkout **nn** by running `git clone https://github.com/sakov/nn-c`.
+Checkout **nn** by running `git clone https://github.com/sakov/nn-c` or `svn checkout https://github.com/sakov/nn-c`.
