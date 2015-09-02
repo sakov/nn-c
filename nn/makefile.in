@@ -11,8 +11,6 @@ $(bindir)\
 $(libdir)\
 $(includedir)
 
-DISTDIR = ~/pub_web
-
 INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_DATA = @INSTALL_DATA@
@@ -147,44 +145,3 @@ distclean: clean configclean ex1clean ex2clean ex3clean ex4clean ex5clean ex6cle
 indent:
 	indent -T FILE -T NN_ALGORITHM -T point -T delaunay -T lpi -T nnpi -T nnhpi -T indexedpoint -T nnai -T ht_bucket -T hashtable -T istack -T triangle -T triangle_neighbours -T circle -T nn_weights -T lweights -T minell -T specs -T reader -T preader -T grid $(LIBSRC) $(UTILSRC) $(HEADERS)
 	rm -f *~
-
-dist:
-	WDIR=`pwd`;\
-	DIR=`basename $$WDIR`;\
-	cp -r $$WDIR /tmp;\
-	cd /tmp/$$DIR/examples/1;\
-	make clean;\
-	rm -f  example.pdf;\
-	cd /tmp/$$DIR/examples/2;\
-	make clean;\
-	rm -f  example.pdf;\
-	cd /tmp/$$DIR/examples/3;\
-	make clean;\
-	cd /tmp/$$DIR/examples/4;\
-	make clean;\
-	cd /tmp/$$DIR/examples/5;\
-	make clean;\
-	cd /tmp/$$DIR/examples/6;\
-	make clean;\
-	cd /tmp/$$DIR;\
-	rm -rf `find /tmp/$$DIR -name CVS`;\
-	if [ -e makefile ] ; then\
-		make distclean;\
-	fi;\
-	/tmp/"$$DIR"/configure;\
-	make standalone;\
-	chmod a+r+x $(PROGRAMS);\
-	mv -f $(PROGRAMS) $(DISTDIR);\
-	make distclean;\
-	cd $(DISTDIR);\
-	mv -f $$DIR".tar.gz" $$DIR".tar.gz.prev";\
-	mv -f $$DIR"-noexamples.tar.gz" $$DIR"-noexamples.tar.gz.prev";\
-	gzip -f $(PROGRAMS);\
-	cd /tmp;\
-	tar czvf $$DIR".tar.gz" $$DIR;\
-	chmod a+r $$DIR".tar.gz";\
-	mv -f $$DIR".tar.gz" $(DISTDIR)/$$DIR".tar.gz";\
-	tar czvf $$DIR"-noexamples.tar.gz" --exclude=$$DIR/examples $$DIR;\
-	chmod a+r $$DIR"-noexamples.tar.gz";\
-	mv -f $$DIR"-noexamples.tar.gz" $(DISTDIR)/$$DIR"-noexamples.tar.gz";\
-	rm -rf $$DIR
