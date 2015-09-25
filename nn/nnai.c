@@ -282,7 +282,7 @@ int main(int argc, char* argv[])
     /*
      * generate output points 
      */
-    points_generate2(-0.1, 1.1, -0.1, 1.1, nx, nx, &nout, &pout);
+    points_generate(-0.1, 1.1, -0.1, 1.1, nx, nx, &nout, &pout);
     xout = malloc(nout * sizeof(double));
     yout = malloc(nout * sizeof(double));
     zout = malloc(nout * sizeof(double));

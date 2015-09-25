@@ -1,3 +1,7 @@
+v. 1.85.1, 25 Sep 2015
+        -- Replaced points_generate2() by points_generate(), seems to work.
+           This eliminates compilation error for target "tests" -- thanks to
+           @ocefpaf for the report.
 v. 1.85, 1 May 2012
         -- A change in nan.h to distinguish between gcc and icc
 v. 1.84, 25 January 2012
@@ -7,10 +11,10 @@ v. 1.83, 19 January 2012
         -- Another cosmetic change - updated the list of structure names to be
            recognised by `indent' when running "make indent"
 v. 1.82, 12 May 2010
-        -- Modified "configure" to check whether compiler option 
+        -- Modified "configure" to check whether compiler option
            "-fno-force-mem" is supported.
 v. 1.81, 29 May 2009
-        -- Added flag NN_SERIAL to the default compiler options for building 
+        -- Added flag NN_SERIAL to the default compiler options for building
            nnbathy.
 v. 1.80, 12 December 2008
         -- Changed the license for compatibility with GPL. Added the file
@@ -27,13 +31,13 @@ v. 1.77, 19 November 2007
            when the reported value has actually changed (with the precision of
            0.1%).
 v. 1.76, 16 November 2007
-        -- Fixed a defect in nnpi_calculate_weights() that caused double 
-           deallocation in some rare cases (a degenerate point on the convex 
+        -- Fixed a defect in nnpi_calculate_weights() that caused double
+           deallocation in some rare cases (a degenerate point on the convex
            hall). Thanks for Maciek Sieczka for reporting this bug.
 v. 1.75, 30 October 2007
         -- Modified delaunay_circles_find() and nnpi_reset(). Got rid of the
            non-scalable stuff that slowed down processing of big datasets.
-           Many thanks to John Gerschwitz, Petroleum Geo-Services, for finding 
+           Many thanks to John Gerschwitz, Petroleum Geo-Services, for finding
            this defect.
 v. 1.74, 30 October 2007
         -- Modified treatment of degenerate cases in nnpi_triangle_process(),
@@ -42,11 +46,11 @@ v. 1.74, 30 October 2007
            1.0e-8. A number of cosmetic changes.
 v. 1.73, 5 July 2007
         -- Removed functional code from within assert()s, which caused problems
-           for production builds on Visual Studio. Thanks to Alok Saldanha for 
+           for production builds on Visual Studio. Thanks to Alok Saldanha for
            reporting this defect.
 v. 1.72, 4 July 2007
         -- Moved division by "denom" in circle_build2() and circle_build1() to
-           after the check on denom == 0; otherwise division on 0 raised 
+           after the check on denom == 0; otherwise division on 0 raised
            exception on some systems. Thanks to Alok Saldanha for reporting this
            bug.
 v. 1.71, 17 January 2007
