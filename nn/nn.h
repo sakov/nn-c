@@ -108,7 +108,7 @@ void points_getrange(int n, point points[], double zoom, double* xmin, double* x
  * @param nout Pointer to number of output points
  * @param pout Pointer to array of output points [*nout]
  */
-void points_generate(double xmin, double xmax, double ymin, double ymax, int nx, int ny, int* nout, point** pout);
+void points_generate2(double xmin, double xmax, double ymin, double ymax, int nx, int ny, int* nout, point** pout);
 
 /** Reads array of points from a columnar file.
  *

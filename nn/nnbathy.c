@@ -504,7 +504,7 @@ int main(int argc, char* argv[])
          * which do not point to NaNs 
          */
         points_getrange(nin, pin, s->zoom, &s->xmin, &s->xmax, &s->ymin, &s->ymax);
-        points_generate(s->xmin, s->xmax, s->ymin, s->ymax, s->nx, s->ny, &nout, &pout);
+        points_generate2(s->xmin, s->xmax, s->ymin, s->ymax, s->nx, s->ny, &nout, &pout);
     } else
         points_read(s->fout, 2, &nout, &pout);
 
