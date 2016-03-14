@@ -289,7 +289,13 @@ static void nnpi_triangle_process(nnpi* nn, point* p, int i)
             } else {
                 int ii;
 
-                if (j1bad) {
+		/*
+		 * Looking for a matching "bad" triangle. I guess it is
+                 * possible that the first circle will come out from
+		 * circle_build2()as "bad", but the matching cicle will not;
+		 * hence the ">" condition below.
+		 */
+                if (j1bad || cs[j1].r > cs[j2].r) {
                     v[6] = cs[j2].x;
                     v[7] = cs[j2].y;
                 } else {

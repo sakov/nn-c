@@ -8,5 +8,7 @@ To visualize, in Matlab run "viewexample" or
 "viewinterp('data.txt', 'nn-0.txt');".
 To clean up, run "make clean".
 
+Note that the locations of data points are marked by white dots.
+
 Good luck!
 Pavel Sakov
