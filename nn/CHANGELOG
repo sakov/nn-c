@@ -1,6 +1,8 @@
+v. 1.86.1, 24 November 2016
+        -- Some internal changes in hash.c.
 v. 1.86.0, 14 March 2016
-        -- A very minor modification in an attempt to improve handling of the
-           degenerate case. Not thoroughly tested yet.
+        -- A minor modification in an attempt to alleviate a potential
+           exception in the degenerate case. Not thoroughly tested yet.
 v. 1.85.1, 25 Sep 2015
         -- Replaced points_generate2() by points_generate(), seems to work.
            This eliminates compilation error for target "tests" -- thanks to

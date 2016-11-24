@@ -18,10 +18,10 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <math.h>
+#include <inttypes.h>
 #include "hash.h"
 
-#define INT_PER_DOUBLE 2
-#define BYTE_PER_INT 4
+#define SIZEOFDOUBLE 8
 
 /** A hash table consists of an array of these buckets.
  */
@@ -207,6 +207,28 @@ void* ht_find(hashtable* table, void* key)
     return NULL;
 }
 
+/** Returns id of the bucket associated with a key.  If the key has
+ * not been inserted in the table, returns -1.
+ *
+ * @param table The hash table
+ * @param key The key
+ * @return id or -1
+ */
+int ht_findid(hashtable* table, void* key)
+{
+    unsigned int val = table->hash(key) % table->size;
+    ht_bucket* bucket;
+
+    if ((table->table)[val] == NULL)
+        return -1;
+
+    for (bucket = (table->table)[val]; bucket != NULL; bucket = bucket->next)
+        if (table->eq(key, bucket->key) == 1)
+            return bucket->id;
+
+    return -1;
+}
+
 /* Deletes an entry from the table.  Returns a pointer to the data that
  * was associated with the key so that the calling code can dispose it
  * properly.
@@ -292,7 +314,7 @@ static unsigned int strhash(void* key)
     unsigned int hashvalue = 0;
 
     while (*str != 0) {
-        hashvalue ^= *(unsigned int*) str;
+        hashvalue ^= (unsigned int) str[0];
         hashvalue <<= 1;
         str++;
     }
@@ -314,13 +336,9 @@ static int streq(void* key1, void* key2)
 
 static unsigned int d1hash(void* key)
 {
-    unsigned int* v = key;
+    uint32_t* v = key;
 
-#if INT_PER_DOUBLE == 2
     return v[0] + v[1];
-#else
-#error not implemented
-#endif
 }
 
 static void* d1cp(void* key)
@@ -343,17 +361,13 @@ static int d1eq(void* key1, void* key2)
 
 static unsigned int d2hash(void* key)
 {
-    unsigned int* v = key;
+    uint32_t* v = key;
 
-#if INT_PER_DOUBLE == 2
     /*
      * PS: here multiplications suppose to make (a,b) and (b,a) generate
      * different hash values 
      */
     return v[0] + v[1] + v[2] * 3 + v[3] * 7;
-#else
-#error not implemented
-#endif
 }
 
 static void* d2cp(void* key)
@@ -377,14 +391,14 @@ static int d2eq(void* key1, void* key2)
 
 static unsigned int i1hash(void* key)
 {
-    return ((unsigned int*) key)[0];
+    return ((int32_t *) key)[0];
 }
 
 static void* i1cp(void* key)
 {
-    int* newkey = malloc(sizeof(int));
+    int32_t* newkey = malloc(sizeof(int32_t));
 
-    newkey[0] = ((int*) key)[0];
+    newkey[0] = ((int32_t *) key)[0];
 
     return newkey;
 }
@@ -400,39 +414,92 @@ static int i1eq(void* key1, void* key2)
 
 static unsigned int i2hash(void* key)
 {
-#if BYTE_PER_INT >= 4
-    unsigned int* v = key;
+    uint32_t* v = key;
 
     return v[0] + (v[1] << 16);
-#else
-#error not implemented
-#endif
 }
 
 static void* i2cp(void* key)
 {
-    int* newkey = malloc(sizeof(int) * 2);
+    uint32_t* newkey = malloc(sizeof(uint32_t) * 2);
 
-    newkey[0] = ((int*) key)[0];
-    newkey[1] = ((int*) key)[1];
+    newkey[0] = ((uint32_t *) key)[0];
+    newkey[1] = ((uint32_t *) key)[1];
 
     return newkey;
 }
 
 static int i2eq(void* key1, void* key2)
 {
-    return (((int*) key1)[0] == ((int*) key2)[0]) && (((int*) key1)[1] == ((int*) key2)[1]);
+    return (((uint32_t *) key1)[0] == ((uint32_t *) key2)[0]) && (((uint32_t *) key1)[1] == ((uint32_t *) key2)[1]);
+}
+
+/* 
+ * functions for for int[1]short[2] keys 
+ */
+
+static unsigned int i1s2hash(void* key)
+{
+    uint32_t* vi = key;
+    uint16_t* vs = key;
+
+    return (int) vi[0] + ((int) vs[2] << 16) + ((int) vs[3] << 24);
+}
+
+static void* i1s2cp(void* key)
+{
+    uint32_t* newkey = malloc(sizeof(uint32_t) * 2);
+    uint16_t* s = (uint16_t *) newkey;
+
+    newkey[0] = ((uint32_t *) key)[0];
+    s[2] = ((uint16_t *) key)[2];
+    s[3] = ((uint16_t *) key)[3];
+
+    return newkey;
+}
+
+static int i1s2eq(void* key1, void* key2)
+{
+    return (((uint32_t *) key1)[0] == ((uint32_t *) key2)[0]) && (((uint16_t *) key1)[2] == ((uint16_t *) key2)[2]) && (((uint16_t *) key1)[3] == ((uint16_t *) key2)[3]);
+}
+
+/* 
+ * functions for for short[4] keys 
+ */
+
+static unsigned int s4hash(void* key)
+{
+    uint16_t* v = key;
+
+    return v[0] + (v[1] << 8) + (v[2] << 16) + (v[3] << 24);
+}
+
+static void* s4cp(void* key)
+{
+    uint16_t* newkey = malloc(sizeof(short) * 4);
+
+    newkey[0] = ((uint16_t *) key)[0];
+    newkey[1] = ((uint16_t *) key)[1];
+    newkey[2] = ((uint16_t *) key)[2];
+    newkey[3] = ((uint16_t *) key)[3];
+
+    return newkey;
+}
+
+static int s4eq(void* key1, void* key2)
+{
+    return ((((uint16_t *) key1)[0] == ((uint16_t *) key2)[0]) && (((uint16_t *) key1)[1] == ((uint16_t *) key2)[1]) && (((uint16_t *) key1)[2] == ((uint16_t *) key2)[2]) && (((uint16_t *) key1)[3] == ((uint16_t *) key2)[3]));
 }
 
 hashtable* ht_create_d1(int size)
 {
-    assert(sizeof(double) == INT_PER_DOUBLE * sizeof(int));
+    assert(sizeof(double) == SIZEOFDOUBLE);
     return ht_create(size, d1cp, d1eq, d1hash);
 }
 
 hashtable* ht_create_d2(int size)
 {
-    assert(sizeof(double) == INT_PER_DOUBLE * sizeof(int));
+    assert(sizeof(double) == SIZEOFDOUBLE);
     return ht_create(size, d2cp, d2eq, d2hash);
 }
 
@@ -448,8 +515,17 @@ hashtable* ht_create_i1(int size)
 
 hashtable* ht_create_i2(int size)
 {
-    assert(sizeof(int) == BYTE_PER_INT);
     return ht_create(size, i2cp, i2eq, i2hash);
+}
+
+hashtable* ht_create_i1s2(int size)
+{
+    return ht_create(size, i1s2cp, i1s2eq, i1s2hash);
+}
+
+hashtable* ht_create_s4(int size)
+{
+    return ht_create(size, s4cp, s4eq, s4hash);
 }
 
 int ht_getnentries(hashtable* table)
@@ -624,7 +700,7 @@ int main()
     ht = ht_create_d2(size);
     printf("done\n");
 
-    printf("  inserting %d values from a file...", size);
+    printf("  inserting %d values from a data array...", size);
     for (i = 0; i < size; ++i)
         ht_insert(ht, &points[i * 3], &points[i * 3 + 2]);
     printf("done\n");
@@ -647,6 +723,7 @@ int main()
     printf("  removing every 3rd element...");
     for (i = 0; i < size; i += 3) {
         double* point = &points[i * 3];
+
         ht_delete(ht, point);
     }
     printf("done\n");
@@ -689,8 +766,8 @@ int main()
         char str[BUFSIZE];
         char* data;
 
-        sprintf(key, "%d-th key", i);
-        sprintf(str, "%d-th data", i);
+        snprintf(key, BUFSIZE, "%d-th key", i);
+        snprintf(str, BUFSIZE, "%d-th data", i);
         data = strdup(str);
         ht_insert(ht, key, data);
     }
@@ -705,7 +782,7 @@ int main()
         char key[BUFSIZE];
         char* data;
 
-        sprintf(key, "%d-th key", i);
+        snprintf(key, BUFSIZE, "%d-th key", i);
         data = ht_find(ht, key);
         if (data != NULL)
             printf("    i = %d; data = \"%s\"\n", i, data);
@@ -717,7 +794,7 @@ int main()
     for (i = 0; i < size; i += 3) {
         char key[BUFSIZE];
 
-        sprintf(key, "%d-th key", i);
+        snprintf(key, BUFSIZE, "%d-th key", i);
         free(ht_delete(ht, key));
     }
     printf("done\n");
@@ -731,7 +808,7 @@ int main()
         char key[BUFSIZE];
         char* data;
 
-        sprintf(key, "%d-th key", i);
+        snprintf(key, BUFSIZE, "%d-th key", i);
         data = ht_find(ht, key);
         if (data != NULL)
             printf("    i = %d; data = \"%s\"\n", i, data);
