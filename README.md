@@ -1,4 +1,4 @@
-##nn
+## nn ##
 (Natural Neighbours interpolation)
 
 **nn** is a C code for Natural Neighbours interpolation of 2D scattered data. It provides a C library and a command line 
