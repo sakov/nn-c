@@ -1,3 +1,6 @@
+v. 1.86.2, 8 June 2017
+        -- Minor portability realated changes in hash.[ch]
+	-- A minor change in makefile
 v. 1.86.1, 24 November 2016
         -- Some internal changes in hash.c.
 v. 1.86.0, 14 March 2016

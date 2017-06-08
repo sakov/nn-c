@@ -10,12 +10,16 @@
  *                 HenkJan Wolthuis.
  *                 Date last modified: 05-Jul-1997
  *
- * Revisions:      18-09-2002 -- modified by Pavel Sakov
+ * Revisions:      18-09-2002 -- Pavel Sakov: modified
+ *                 07-06-2017 -- Pavel Sakov: changed the hash type from
+ *                               unsigned int to uint32_t
  *
  *****************************************************************************/
 
 #ifndef _HASH_H
 #define _HASH_H
+
+#include <inttypes.h>
 
 struct hashtable;
 typedef struct hashtable hashtable;
@@ -28,9 +32,9 @@ typedef void* (*ht_keycp) (void*);
  */
 typedef int (*ht_keyeq) (void*, void*);
 
-/** Converts key to an unsigned integer (not necessarily unique).
+/** Converts key to an unsigned 32-bit integer (not necessarily unique).
  */
-typedef unsigned int (*ht_key2hash) (void*);
+typedef uint32_t (*ht_key2hash) (void*);
 
 /** Creates a hash table of specified size.
  *
@@ -46,8 +50,10 @@ hashtable* ht_create(int size, ht_keycp cp, ht_keyeq eq, ht_key2hash hash);
 hashtable* ht_create_d1(int size);      /* double[1] */
 hashtable* ht_create_d2(int size);      /* double[2] */
 hashtable* ht_create_str(int size);     /* char* */
-hashtable* ht_create_i1(int size);      /* int[1] */
-hashtable* ht_create_i2(int size);      /* int[2] */
+hashtable* ht_create_i1(int size);      /* uint32_t[1] */
+hashtable* ht_create_i2(int size);      /* uint32_t[2] */
+hashtable* ht_create_i1s2(int size);    /* uint32_t[1]uint16_t[2] */
+hashtable* ht_create_s4(int size);      /* uint16_t[4] */
 
 /** Destroys a hash table.
  * (Take care of deallocating data by ht_process() prior to destroying the
@@ -75,6 +81,15 @@ void* ht_insert(hashtable* table, void* key, void* data);
  * @return The associated data or NULL
  */
 void* ht_find(hashtable* table, void* key);
+
+/** Returns id of the bucket associated with a key.  If the key has
+ * not been inserted in the table, returns -1.
+ *
+ * @param table The hash table
+ * @param key The key
+ * @return id or -1
+ */
+int ht_findid(hashtable* table, void* key);
 
 /** Deletes an entry from the table.  Returns a pointer to the data that
  * was associated with the key so that the calling code can dispose it

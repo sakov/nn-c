@@ -96,8 +96,8 @@ nnphi_test:
 ht_test:
 	$(CC) -o ht_test hash.c -DHT_TEST $(CFLAGS) -I. $(MLIB)
 
-.c.o:
-	$(CC) $(CFLAGS) -c $*.c
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 installdirs:
 	$(SHELL) mkinstalldirs $(INSTALLDIRS)
