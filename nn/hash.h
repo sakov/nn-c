@@ -24,7 +24,7 @@
 struct hashtable;
 typedef struct hashtable hashtable;
 
-/** Copies a key. The key must be able to be deallocated by free().
+/** Copies a key. The key must permit to be deallocated by free().
  */
 typedef void* (*ht_keycp) (void*);
 
@@ -36,13 +36,6 @@ typedef int (*ht_keyeq) (void*, void*);
  */
 typedef uint32_t (*ht_key2hash) (void*);
 
-/** Creates a hash table of specified size.
- *
- * @param size Size of hash table for output points
- * @param cp Key copy function
- * @param eq Key equality check function
- * @param hash Hash value calculation function
- */
 hashtable* ht_create(int size, ht_keycp cp, ht_keyeq eq, ht_key2hash hash);
 
 /** Create a hash table of specified size and key type.
@@ -55,79 +48,14 @@ hashtable* ht_create_i2(int size);      /* uint32_t[2] */
 hashtable* ht_create_i1s2(int size);    /* uint32_t[1]uint16_t[2] */
 hashtable* ht_create_s4(int size);      /* uint16_t[4] */
 
-/** Destroys a hash table.
- * (Take care of deallocating data by ht_process() prior to destroying the
- * table if necessary.)
- *
- * @param table Hash table to be destroyed
- */
 void ht_destroy(hashtable* table);
-
-/** Inserts a new entry into the hash table.
- *
- * @param table The hash table
- * @param key Ponter to entry's key
- * @param data Pointer to associated data
- * @return Pointer to the old data associated with the key, NULL if the key
- *         wasn't in the table previously
- */
 void* ht_insert(hashtable* table, void* key, void* data);
-
-/** Returns a pointer to the data associated with a key.  If the key has
- * not been inserted in the table, returns NULL.
- *
- * @param table The hash table
- * @param key The key
- * @return The associated data or NULL
- */
 void* ht_find(hashtable* table, void* key);
-
-/** Returns id of the bucket associated with a key.  If the key has
- * not been inserted in the table, returns -1.
- *
- * @param table The hash table
- * @param key The key
- * @return id or -1
- */
 int ht_findid(hashtable* table, void* key);
-
-/** Deletes an entry from the table.  Returns a pointer to the data that
- * was associated with the key so that the calling code can dispose it
- * properly.
- *
- * @param table The hash table
- * @param key The key
- * @return The associated data or NULL
- */
 void* ht_delete(hashtable* table, void* key);
-
-/** For each entry, calls a specified function with corresponding data as a
- * parameter.
- *
- * @param table The hash table
- * @param func The action function
- */
 void ht_process(hashtable* table, void (*func) (void*));
-
-/** Get the number of committed entries.
- *
- * @param table The hash table
- * @return The number of committed entries
- */
 int ht_getnentries(hashtable* table);
-
-/** Get the size of the table.
- *
- * @param table The hash table
- * @return The size of the table
- */
 int ht_getsize(hashtable* table);
-
-/** Get the number of table elements filled.
- *
- * @param table The hash table
- * @return The number of table elements filled
- */
 int ht_getnfilled(hashtable* table);
 
 #endif                          /* _HASH_H */
