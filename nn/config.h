@@ -1,3 +1,7 @@
+<<<<<<< Updated upstream
+=======
+/* config.h.  Generated from config.h.in by configure.  */
+>>>>>>> Stashed changes
 #if defined(_WIN32)
 #define isnan _isnan
 #define copysign _copysign
