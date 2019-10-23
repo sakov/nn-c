@@ -1,7 +1,0 @@
-*.o
-*.log
-makefile
-minell
-nnbathy
-*/config.status
-*.obj

@@ -18,10 +18,6 @@
 #if !defined(_NN_H)
 #define _NN_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 typedef enum { SIBSON, NON_SIBSONIAN } NN_RULE;
 
 /* "point" is a basic data structure in this package.
@@ -350,9 +346,5 @@ extern char* nn_version;
  * debugging purposes).
  */
 extern int nn_test_vertice;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif                          /* _NN_H */
