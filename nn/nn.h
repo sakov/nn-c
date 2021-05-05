@@ -328,8 +328,4 @@ extern char* nn_version;
  */
 extern int nn_test_vertice;
 
-#ifdef __cplusplus
-}
-#endif
-
 #endif                          /* _NN_H */
