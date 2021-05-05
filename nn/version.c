@@ -1,1 +1,1 @@
-char* NN_VERSION = "2.0.1";
+char* nn_version = "2.0.1";

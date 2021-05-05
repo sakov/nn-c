@@ -18,9 +18,29 @@
 #if !defined(_NN_H)
 #define _NN_H
 
-extern char* NN_VERSION;
+/* Contains version string for the nn package.
+ */
+extern char* nn_version;
 
+/* Sets the verbosity level within nn package.
+ * 0 (default) - silent
+ * 1 - verbose
+ * 2 - very verbose
+ */
+extern int nn_verbose;
+
+/* Switches between different formulations for NN weights.
+ * SIBSON -- classic formulation by Sibson
+ * NON_SIBSONIAN -- alternative formulation by Belikov & Semenov
+ *                  
+ */
 typedef enum { SIBSON, NON_SIBSONIAN } NN_RULE;
+extern NN_RULE nn_rule;
+
+/* Limits verbose information to a particular vertex (used mainly for
+ * debugging purposes).
+ */
+extern int nn_test_vertice;
 
 /* "point" is a basic data structure in this package.
  */
@@ -304,28 +324,5 @@ void nnai_interpolate(nnai* nn, double* zin, double* zout);
  * @param wmin Minimal allowed weight
  */
 void nnai_setwmin(nnai* nn, double wmin);
-
-/* Sets the verbosity level within nn package.
- * 0 (default) - silent
- * 1 - verbose
- * 2 - very verbose
- */
-extern int nn_verbose;
-
-/* Switches between different formulations for NN weights.
- * SIBSON -- classic formulation by Sibson
- * NON_SIBSONIAN -- alternative formulation by Belikov & Semenov
- *                  
- */
-extern NN_RULE nn_rule;
-
-/* Contains version string for the nn package.
- */
-extern char* nn_version;
-
-/* Limits verbose information to a particular vertex (used mainly for
- * debugging purposes).
- */
-extern int nn_test_vertice;
 
 #endif                          /* _NN_H */

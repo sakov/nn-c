@@ -76,7 +76,7 @@ typedef struct {
 
 static void version()
 {
-    printf("  nnbathy/nn version %s\n", NN_VERSION);
+    printf("  nnbathy/nn version %s\n", nn_version);
     exit(0);
 }
 
