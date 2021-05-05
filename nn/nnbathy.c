@@ -20,6 +20,7 @@
  * Revisions:      29/05/2006: introduced NN_SERIAL, see the description above
  *                 01/06/2006: moved flags and other command-line input into
  *                             structure "specs"
+ *                 05/05/2021: added MPI version
  *
  *****************************************************************************/
 

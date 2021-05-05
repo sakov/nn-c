@@ -20,6 +20,7 @@
  *                   to reset the flags to 0 on return. This is very important
  *                   for large datasets, many thanks to John Gerschwitz,
  *                   Petroleum Geo-Services, for identifying the problem.
+ *                 05/05/2021 PS: added MPI code.
  *
  *****************************************************************************/
 

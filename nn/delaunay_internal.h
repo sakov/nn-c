@@ -1,3 +1,19 @@
+/******************************************************************************
+ *
+ * File:           delaunay_internal.h
+ *
+ * Created:        05/05/2021
+ *
+ * Author:         Pavel Sakov
+ *                 BoM
+ *
+ * Purpose:        Internal header for delaunay triangulation.
+ *
+ * Description:    Internal header for delaunay triangulation.
+ * Revisions:      
+ *
+ *****************************************************************************/
+
 #if !defined(_DELAUNAY_INTERNAL_H)
 #define _DELAUNAY_INTERNAL_H
 
