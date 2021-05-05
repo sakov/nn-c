@@ -33,11 +33,28 @@
 #include <limits.h>
 #include <float.h>
 #include "triangle.h"
-#include "istack.h"
+#include "istack_internal.h"
 #include "nan.h"
-#include "delaunay.h"
 #include "nn.h"
-#include "nn_internal.h"
+#include "nncommon.h"
+#include "delaunay_internal.h"
+
+#if defined(MPI)
+#include <mpi.h>
+
+int nprocesses = 1;
+int rank = 0;
+
+#if defined(USE_SHMEM)
+/*
+ * "sm" stands for "shared memory"
+ */
+MPI_Comm sm_comm = MPI_COMM_NULL;
+int sm_comm_rank = -1;
+int sm_comm_size = 0;
+#endif
+extern int make_iso_compilers_happy;
+#endif                          /* MPI */
 
 /*
  * This parameter is used in search of tricircles containing a given point:
@@ -111,132 +128,103 @@ static void tio_destroy(struct triangulateio* tio)
 
 static delaunay* delaunay_create()
 {
-    delaunay* d = malloc(sizeof(delaunay));
+    delaunay* d = calloc(1, sizeof(delaunay));
 
-    d->npoints = 0;
-    d->points = NULL;
     d->xmin = DBL_MAX;
     d->xmax = -DBL_MAX;
     d->ymin = DBL_MAX;
     d->ymax = -DBL_MAX;
-    d->ntriangles = 0;
-    d->triangles = NULL;
-    d->circles = NULL;
-    d->neighbours = NULL;
-    d->n_point_triangles = NULL;
-    d->point_triangles = NULL;
-    d->nedges = 0;
-    d->edges = NULL;
-    d->flags = NULL;
-    d->first_id = -1;
-    d->t_in = NULL;
-    d->t_out = NULL;
-    d->nflags = 0;
-    d->nflagsallocated = 0;
-    d->flagids = NULL;
 
     return d;
 }
 
-static void tio2delaunay(struct triangulateio* tio_out, delaunay* d)
+static void tio2delaunay(struct triangulateio* tio, delaunay* d, void* data)
 {
     int i, j;
 
-    /*
-     * I assume that all input points appear in tio_out in the same order as 
-     * they were written to tio_in. I have seen no exceptions so far, even
-     * if duplicate points were presented. Just in case, let us make a couple
-     * of checks. 
-     */
-    assert(tio_out->numberofpoints == d->npoints);
-    assert(tio_out->pointlist[2 * d->npoints - 2] == d->points[d->npoints - 1].x && tio_out->pointlist[2 * d->npoints - 1] == d->points[d->npoints - 1].y);
+    if (tio != NULL) {
 
-    for (i = 0, j = 0; i < d->npoints; ++i) {
-        point* p = &d->points[i];
+        /*
+         * I assume that all input points appear in tio in the same order
+         * as they were written to tio_in. I have seen no exceptions so far,
+         * even if duplicate points were presented. Just in case, let us make
+         * a couple of checks. 
+         */
+        assert(tio->numberofpoints == d->npoints);
+        assert(tio->pointlist[2 * d->npoints - 2] == d->points[d->npoints - 1].x && tio->pointlist[2 * d->npoints - 1] == d->points[d->npoints - 1].y);
 
-        if (p->x < d->xmin)
-            d->xmin = p->x;
-        if (p->x > d->xmax)
-            d->xmax = p->x;
-        if (p->y < d->ymin)
-            d->ymin = p->y;
-        if (p->y > d->ymax)
-            d->ymax = p->y;
+        d->ntriangles = tio->numberoftriangles;
+        d->nedges = tio->numberofedges;
     }
-    if (nn_verbose) {
-        fprintf(stderr, "input:\n");
-        for (i = 0, j = 0; i < d->npoints; ++i) {
-            point* p = &d->points[i];
+#if defined(USE_SHMEM)
+    MPI_Bcast(&d->ntriangles, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&d->nedges, 1, MPI_INT, 0, MPI_COMM_WORLD);
+#endif
 
-            fprintf(stderr, "  %d: %15.7g %15.7g %15.7g\n", i, p->x, p->y, p->z);
-        }
-    }
+    d->triangles = data;
+    d->neighbours = (triangle_neighbours*) &d->triangles[d->ntriangles];
+    d->circles = (circle*) &d->neighbours[d->ntriangles];
+    d->n_point_triangles = (int*) &d->circles[d->ntriangles];
+    d->point_triangles_offset = (int*) &d->n_point_triangles[d->npoints];
+    d->point_triangles = (int*) &d->point_triangles_offset[d->npoints];
+    d->edges = &d->point_triangles[d->ntriangles * 3];
 
-    d->ntriangles = tio_out->numberoftriangles;
-    if (d->ntriangles > 0) {
-        d->triangles = malloc(d->ntriangles * sizeof(triangle));
-        d->neighbours = malloc(d->ntriangles * sizeof(triangle_neighbours));
-        d->circles = malloc(d->ntriangles * sizeof(circle));
-        d->n_point_triangles = calloc(d->npoints, sizeof(int));
-        d->point_triangles = malloc(d->npoints * sizeof(int*));
-        d->flags = calloc(d->ntriangles, sizeof(int));
-    }
-
-    if (nn_verbose)
-        fprintf(stderr, "triangles:\n");
-    for (i = 0; i < d->ntriangles; ++i) {
-        int offset = i * 3;
-        triangle* t = &d->triangles[i];
-        triangle_neighbours* n = &d->neighbours[i];
-        circle* c = &d->circles[i];
-        int status;
-
-        t->vids[0] = tio_out->trianglelist[offset];
-        t->vids[1] = tio_out->trianglelist[offset + 1];
-        t->vids[2] = tio_out->trianglelist[offset + 2];
-
-        n->tids[0] = tio_out->neighborlist[offset];
-        n->tids[1] = tio_out->neighborlist[offset + 1];
-        n->tids[2] = tio_out->neighborlist[offset + 2];
-
-        status = circle_build1(c, &d->points[t->vids[0]], &d->points[t->vids[1]], &d->points[t->vids[2]]);
-        assert(status);
-
+    if (tio != NULL) {
         if (nn_verbose)
-            fprintf(stderr, "  %d: (%d,%d,%d)\n", i, t->vids[0], t->vids[1], t->vids[2]);
-    }
+            fprintf(stderr, "triangles:\n");
+        for (i = 0; i < d->ntriangles; ++i) {
+            int offset = i * 3;
+            triangle* t = &d->triangles[i];
+            triangle_neighbours* n = &d->neighbours[i];
+            circle* c = &d->circles[i];
+            int status;
 
-    for (i = 0; i < d->ntriangles; ++i) {
-        triangle* t = &d->triangles[i];
+            t->vids[0] = tio->trianglelist[offset];
+            t->vids[1] = tio->trianglelist[offset + 1];
+            t->vids[2] = tio->trianglelist[offset + 2];
 
-        for (j = 0; j < 3; ++j)
-            d->n_point_triangles[t->vids[j]]++;
-    }
-    if (d->ntriangles > 0) {
-        for (i = 0; i < d->npoints; ++i) {
-            if (d->n_point_triangles[i] > 0)
-                d->point_triangles[i] = malloc(d->n_point_triangles[i] * sizeof(int));
-            else
-                d->point_triangles[i] = NULL;
-            d->n_point_triangles[i] = 0;
+            n->tids[0] = tio->neighborlist[offset];
+            n->tids[1] = tio->neighborlist[offset + 1];
+            n->tids[2] = tio->neighborlist[offset + 2];
+
+            status = circle_build1(c, &d->points[t->vids[0]], &d->points[t->vids[1]], &d->points[t->vids[2]]);
+            assert(status);
+
+            if (nn_verbose)
+                fprintf(stderr, "  %d: (%d,%d,%d)\n", i, t->vids[0], t->vids[1], t->vids[2]);
         }
-    }
-    for (i = 0; i < d->ntriangles; ++i) {
-        triangle* t = &d->triangles[i];
 
-        for (j = 0; j < 3; ++j) {
-            int vid = t->vids[j];
+        for (i = 0; i < d->ntriangles; ++i) {
+            triangle* t = &d->triangles[i];
 
-            d->point_triangles[vid][d->n_point_triangles[vid]] = i;
-            d->n_point_triangles[vid]++;
+            for (j = 0; j < 3; ++j)
+                d->n_point_triangles[t->vids[j]]++;
         }
-    }
+        for (i = 1; i < d->npoints; ++i)
+            d->point_triangles_offset[i] = d->point_triangles_offset[i - 1] + d->n_point_triangles[i - 1];
+        memset(d->n_point_triangles, 0, d->npoints * sizeof(int));
 
-    if (tio_out->edgelist != NULL) {
-        d->nedges = tio_out->numberofedges;
-        d->edges = malloc(d->nedges * 2 * sizeof(int));
-        memcpy(d->edges, tio_out->edgelist, d->nedges * 2 * sizeof(int));
+        for (i = 0; i < d->ntriangles; ++i) {
+            triangle* t = &d->triangles[i];
+
+            for (j = 0; j < 3; ++j) {
+                int vid = t->vids[j];
+
+                d->point_triangles[d->point_triangles_offset[vid] + d->n_point_triangles[vid]] = i;
+                d->n_point_triangles[vid]++;
+            }
+        }
+        memcpy(d->edges, tio->edgelist, d->nedges * 2 * sizeof(int));
     }
+#if defined(USE_SHMEM)
+    MPI_Win_fence(0, d->sm_win_delaunaydata);
+    MPI_Barrier(sm_comm);
+#endif
+}
+
+static size_t delaunay_getdatasize(struct triangulateio* tio)
+{
+    return tio->numberoftriangles * (sizeof(triangle) + sizeof(triangle_neighbours) + sizeof(circle) + sizeof(int) * 3) + tio->numberofpoints * sizeof(int) * 2 + tio->numberofedges * sizeof(int) * 2;
 }
 
 /* Builds Delaunay triangulation of the given array of points.
@@ -251,72 +239,163 @@ static void tio2delaunay(struct triangulateio* tio_out, delaunay* d)
  */
 delaunay* delaunay_build(int np, point points[], int ns, int segments[], int nh, double holes[])
 {
-    delaunay* d = delaunay_create();
+    delaunay* d = NULL;
     struct triangulateio tio_in;
     struct triangulateio tio_out;
-    char cmd[64] = "eznC";
     int i, j;
 
-    assert(sizeof(REAL) == sizeof(double));
+#if defined(USE_SHMEM)
+    int ntriangles;
 
-    tio_init(&tio_in);
+    if (sm_comm_rank == 0) {
+#endif
+        char cmd[64] = "eznC";
 
-    if (np == 0) {
-        free(d);
-        return NULL;
+        if (np == 0)
+            return NULL;
+
+        assert(sizeof(REAL) == sizeof(double));
+
+        tio_init(&tio_in);
+        tio_in.pointlist = malloc(np * 2 * sizeof(double));
+        tio_in.numberofpoints = np;
+        for (i = 0, j = 0; i < np; ++i) {
+            tio_in.pointlist[j++] = points[i].x;
+            tio_in.pointlist[j++] = points[i].y;
+        }
+
+        if (ns > 0) {
+            tio_in.segmentlist = malloc(ns * 2 * sizeof(int));
+            tio_in.numberofsegments = ns;
+            memcpy(tio_in.segmentlist, segments, ns * 2 * sizeof(int));
+        }
+
+        if (nh > 0) {
+            tio_in.holelist = malloc(nh * 2 * sizeof(double));
+            tio_in.numberofholes = nh;
+            memcpy(tio_in.holelist, holes, nh * 2 * sizeof(double));
+        }
+
+        tio_init(&tio_out);
+
+        if (!nn_verbose)
+            strcat(cmd, "Q");
+        else if (nn_verbose > 1)
+            strcat(cmd, "VV");
+        if (ns != 0)
+            strcat(cmd, "p");
+
+        if (nn_verbose)
+            fflush(stderr);
+
+        /*
+         * climax 
+         */
+        triangulate(cmd, &tio_in, &tio_out, NULL);
+
+        if (nn_verbose)
+            fflush(stderr);
+
+#if defined(USE_SHMEM)
+        ntriangles = tio_out.numberoftriangles;
     }
+    (void) MPI_Bcast(&ntriangles, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    if (ntriangles == 0)
+        goto finish;
+#endif
 
-    tio_in.pointlist = malloc(np * 2 * sizeof(double));
-    tio_in.numberofpoints = np;
-    for (i = 0, j = 0; i < np; ++i) {
-        tio_in.pointlist[j++] = points[i].x;
-        tio_in.pointlist[j++] = points[i].y;
-    }
+#if !defined(USE_SHMEM)
+    if (tio_out.numberoftriangles == 0)
+        goto finish;
+#endif
 
-    if (ns > 0) {
-        tio_in.segmentlist = malloc(ns * 2 * sizeof(int));
-        tio_in.numberofsegments = ns;
-        memcpy(tio_in.segmentlist, segments, ns * 2 * sizeof(int));
-    }
-
-    if (nh > 0) {
-        tio_in.holelist = malloc(nh * 2 * sizeof(double));
-        tio_in.numberofholes = nh;
-        memcpy(tio_in.holelist, holes, nh * 2 * sizeof(double));
-    }
-
-    tio_init(&tio_out);
-
-    if (!nn_verbose)
-        strcat(cmd, "Q");
-    else if (nn_verbose > 1)
-        strcat(cmd, "VV");
-    if (ns != 0)
-        strcat(cmd, "p");
-
-    if (nn_verbose)
-        fflush(stderr);
-
-    /*
-     * climax 
-     */
-    triangulate(cmd, &tio_in, &tio_out, NULL);
-
-    if (nn_verbose)
-        fflush(stderr);
-
+    d = delaunay_create();
     d->npoints = np;
-    d->points = points;
+    d->points = points;         /* (shallow copy) */
+    for (i = 0, j = 0; i < np; ++i) {
+        point* p = &points[i];
 
-    tio2delaunay(&tio_out, d);
+        if (p->x < d->xmin)
+            d->xmin = p->x;
+        if (p->x > d->xmax)
+            d->xmax = p->x;
+        if (p->y < d->ymin)
+            d->ymin = p->y;
+        if (p->y > d->ymax)
+            d->ymax = p->y;
+    }
 
-    tio_destroy(&tio_in);
-    tio_destroy(&tio_out);
+#if defined(USE_SHMEM)
+    if (sm_comm_rank == 0) {
+#endif
+        if (nn_verbose) {
+            fprintf(stderr, "input:\n");
+            for (i = 0, j = 0; i < d->npoints; ++i) {
+                point* p = &d->points[i];
+
+                fprintf(stderr, "  %d: %15.7g %15.7g %15.7g\n", i, p->x, p->y, p->z);
+            }
+        }
+#if defined(USE_SHMEM)
+    }
+#endif
+
+    {
+        size_t size = 0;
+        void* data = NULL;
+
+#if !defined(USE_SHMEM)
+        size = delaunay_getdatasize(&tio_out);
+        data = calloc(1, size);
+#else
+        if (rank == 0) {
+            size = delaunay_getdatasize(&tio_out);
+            assert(sizeof(size_t) == sizeof(MPI_UNSIGNED_LONG));
+        }
+        (void) MPI_Bcast(&size, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
+
+        (void) MPI_Win_allocate_shared((sm_comm_rank == 0) ? size : 0, sizeof(char), MPI_INFO_NULL, sm_comm, &data, &d->sm_win_delaunaydata);
+        if (sm_comm_rank == 0) {
+            memset(data, 0, size);
+            if (nn_verbose)
+                fprintf(stderr, "  MPI: put %u bytes of triangulation data into shared memory\n", (unsigned int) size);
+        } else {
+            int disp_unit;
+            MPI_Aint my_size;
+
+            MPI_Win_shared_query(d->sm_win_delaunaydata, 0, &my_size, &disp_unit, &data);
+            assert(my_size == size);
+            assert(disp_unit == sizeof(char));
+            assert(data != NULL);
+        }
+        MPI_Win_fence(0, d->sm_win_delaunaydata);
+        MPI_Barrier(sm_comm);
+#endif
+
+#if defined(USE_SHMEM)
+        if (sm_comm_rank == 0)
+#endif
+            tio2delaunay(&tio_out, d, data);
+#if defined(USE_SHMEM)
+        else
+            tio2delaunay(NULL, d, data);
+#endif
+    }
+
+  finish:
+#if defined(USE_SHMEM)
+    if (sm_comm_rank == 0) {
+#endif
+        tio_destroy(&tio_in);
+        tio_destroy(&tio_out);
+#if defined(USE_SHMEM)
+    }
+#endif
 
     return d;
 }
 
-/* Destroys Delaunay triangulation.
+/** Destroys Delaunay triangulation.
  *
  * @param d Structure to be destroyed
  */
@@ -325,33 +404,49 @@ void delaunay_destroy(delaunay* d)
     if (d == NULL)
         return;
 
-    if (d->point_triangles != NULL) {
-        int i;
-
-        for (i = 0; i < d->npoints; ++i)
-            if (d->point_triangles[i] != NULL)
-                free(d->point_triangles[i]);
-        free(d->point_triangles);
-    }
-    if (d->nedges > 0)
-        free(d->edges);
-    if (d->n_point_triangles != NULL)
-        free(d->n_point_triangles);
-    if (d->flags != NULL)
-        free(d->flags);
-    if (d->circles != NULL)
-        free(d->circles);
-    if (d->neighbours != NULL)
-        free(d->neighbours);
+#if !defined(USE_SHMEM)
     if (d->triangles != NULL)
         free(d->triangles);
-    if (d->t_in != NULL)
-        istack_destroy(d->t_in);
-    if (d->t_out != NULL)
-        istack_destroy(d->t_out);
-    if (d->flagids != NULL)
-        free(d->flagids);
+#else
+    MPI_Win_free(&d->sm_win_delaunaydata);
+#endif
     free(d);
+}
+
+/**
+ */
+size_t delaunay_getmemsize(delaunay* d)
+{
+    return d->ntriangles * (sizeof(triangle) + sizeof(triangle_neighbours) + sizeof(circle) + sizeof(int) * 3) + d->npoints * (sizeof(int) + sizeof(int*));
+}
+
+/**
+ */
+dsearch* dsearch_build(delaunay* d)
+{
+    dsearch* ds = calloc(1, sizeof(dsearch));
+
+    ds->d = d;
+    ds->first_id = -1;
+    if (d->ntriangles > 0)
+        ds->flags = calloc(d->ntriangles, sizeof(int));
+
+    return ds;
+}
+
+/**
+ */
+void dsearch_destroy(dsearch * ds)
+{
+    if (ds->flags != NULL)
+        free(ds->flags);
+    if (ds->t_in != NULL)
+        istack_destroy(ds->t_in);
+    if (ds->t_out != NULL)
+        istack_destroy(ds->t_out);
+    if (ds->flagids != NULL)
+        free(ds->flagids);
+    free(ds);
 }
 
 /* Returns whether the point p is on the right side of the vector (p0, p1).
@@ -396,28 +491,28 @@ int delaunay_xytoi(delaunay* d, point* p, int id)
     return id;
 }
 
-static void delaunay_addflag(delaunay* d, int i)
+static void dsearch_addflag(dsearch * ds, int i)
 {
-    if (d->nflags == d->nflagsallocated) {
-        d->nflagsallocated += N_FLAGS_INC;
-        d->flagids = realloc(d->flagids, d->nflagsallocated * sizeof(int));
+    if (ds->nflags == ds->nflagsallocated) {
+        ds->nflagsallocated += N_FLAGS_INC;
+        ds->flagids = realloc(ds->flagids, ds->nflagsallocated * sizeof(int));
     }
-    d->flagids[d->nflags] = i;
-    d->nflags++;
+    ds->flagids[ds->nflags] = i;
+    ds->nflags++;
 }
 
-static void delaunay_resetflags(delaunay* d)
+static void dsearch_resetflags(dsearch * ds)
 {
     int i;
 
-    for (i = 0; i < d->nflags; ++i)
-        d->flags[d->flagids[i]] = 0;
-    d->nflags = 0;
+    for (i = 0; i < ds->nflags; ++i)
+        ds->flags[ds->flagids[i]] = 0;
+    ds->nflags = 0;
 }
 
-/* Finds all tricircles specified point belongs to.
+/** Find all tricircles specified point belongs to.
  *
- * @param d Delaunay triangulation
+ * @param ds `dsearch' structure
  * @param p Point to be mapped
  * @param n Pointer to the number of tricircles within `d' containing `p'
  *          (output)
@@ -434,8 +529,10 @@ static void delaunay_resetflags(delaunay* d)
  * search algorithms. It not 100% clear though whether this will lead to a
  * substantial speed gains because of the check on convex hall involved.
  */
-void delaunay_circles_find(delaunay* d, point* p, int* n, int** out)
+void dsearch_circles_find(dsearch * ds, point* p, int* n, int** out)
 {
+    delaunay* d = ds->d;
+
     /*
      * This flag was introduced as a hack to handle some degenerate cases. It 
      * is set to 1 only if the triangle associated with the first circle is
@@ -447,25 +544,25 @@ void delaunay_circles_find(delaunay* d, point* p, int* n, int** out)
     int contains = 0;
     int i;
 
-    if (d->t_in == NULL) {
-        d->t_in = istack_create();
-        d->t_out = istack_create();
+    if (ds->t_in == NULL) {
+        ds->t_in = istack_create();
+        ds->t_out = istack_create();
     }
 
     /*
      * if there are only a few data points, do linear search
      */
     if (d->ntriangles <= N_SEARCH_TURNON) {
-        istack_reset(d->t_out);
+        istack_reset(ds->t_out);
 
         for (i = 0; i < d->ntriangles; ++i) {
             if (circle_contains(&d->circles[i], p)) {
-                istack_push(d->t_out, i);
+                istack_push(ds->t_out, i);
             }
         }
 
-        *n = d->t_out->n;
-        *out = d->t_out->v;
+        *n = ds->t_out->n;
+        *out = ds->t_out->v;
 
         return;
     }
@@ -480,26 +577,26 @@ void delaunay_circles_find(delaunay* d, point* p, int* n, int** out)
      * tricircles from the last search; if fails then (iii) make linear
      * search through all tricircles 
      */
-    if (d->first_id < 0 || !circle_contains(&d->circles[d->first_id], p)) {
+    if (ds->first_id < 0 || !circle_contains(&d->circles[ds->first_id], p)) {
         /*
          * if any triangle contains p -- start with this triangle 
          */
-        d->first_id = delaunay_xytoi(d, p, d->first_id);
-        contains = (d->first_id >= 0);
+        ds->first_id = delaunay_xytoi(d, p, ds->first_id);
+        contains = (ds->first_id >= 0);
 
         /*
          * if no triangle contains p, there still is a chance that it is
          * inside some of circumcircles 
          */
-        if (d->first_id < 0) {
-            int nn = d->t_out->n;
+        if (ds->first_id < 0) {
+            int nn = ds->t_out->n;
             int tid = -1;
 
             /*
              * first check results of the last search 
              */
             for (i = 0; i < nn; ++i) {
-                tid = d->t_out->v[i];
+                tid = ds->t_out->v[i];
                 if (circle_contains(&d->circles[tid], p))
                     break;
             }
@@ -514,44 +611,44 @@ void delaunay_circles_find(delaunay* d, point* p, int* n, int** out)
                         break;
                 }
                 if (tid == nt) {
-                    istack_reset(d->t_out);
+                    istack_reset(ds->t_out);
                     *n = 0;
                     *out = NULL;
                     return;     /* failed */
                 }
             }
-            d->first_id = tid;
+            ds->first_id = tid;
         }
     }
 
-    istack_reset(d->t_in);
-    istack_reset(d->t_out);
+    istack_reset(ds->t_in);
+    istack_reset(ds->t_out);
 
-    istack_push(d->t_in, d->first_id);
-    d->flags[d->first_id] = 1;
-    delaunay_addflag(d, d->first_id);
+    istack_push(ds->t_in, ds->first_id);
+    ds->flags[ds->first_id] = 1;
+    dsearch_addflag(ds, ds->first_id);
 
     /*
      * main cycle 
      */
-    while (d->t_in->n > 0) {
-        int tid = istack_pop(d->t_in);
+    while (ds->t_in->n > 0) {
+        int tid = istack_pop(ds->t_in);
         triangle* t = &d->triangles[tid];
 
         if (contains || circle_contains(&d->circles[tid], p)) {
-            istack_push(d->t_out, tid);
+            istack_push(ds->t_out, tid);
             for (i = 0; i < 3; ++i) {
                 int vid = t->vids[i];
                 int nt = d->n_point_triangles[vid];
                 int j;
 
                 for (j = 0; j < nt; ++j) {
-                    int ntid = d->point_triangles[vid][j];
+                    int ntid = d->point_triangles[d->point_triangles_offset[vid] + j];
 
-                    if (d->flags[ntid] == 0) {
-                        istack_push(d->t_in, ntid);
-                        d->flags[ntid] = 1;
-                        delaunay_addflag(d, ntid);
+                    if (ds->flags[ntid] == 0) {
+                        istack_push(ds->t_in, ntid);
+                        ds->flags[ntid] = 1;
+                        dsearch_addflag(ds, ntid);
                     }
                 }
             }
@@ -559,7 +656,7 @@ void delaunay_circles_find(delaunay* d, point* p, int* n, int** out)
         contains = 0;
     }
 
-    *n = d->t_out->n;
-    *out = d->t_out->v;
-    delaunay_resetflags(d);
+    *n = ds->t_out->n;
+    *out = ds->t_out->v;
+    dsearch_resetflags(ds);
 }

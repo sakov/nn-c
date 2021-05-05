@@ -16,8 +16,8 @@
 #if !defined(_MINELL_H)
 #define _MINELL_H
 
-#if !defined(_POINT_STRUCT)
-#define _POINT_STRUCT
+#if !defined(_STRUCT_POINT)
+#define _STRUCT_POINT
 typedef struct {
     double x;
     double y;

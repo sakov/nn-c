@@ -27,10 +27,10 @@ fi
 
 # C compiler flags
 if [ -z "$CFLAGS" ]; then
-  CFLAGS="-g -O2 -Wall -pedantic"
+  CFLAGS="-g -O2 -Wall -pedantic -D_GNU_SOURCE -std=c99"
 fi
 
-CFLAGS_TRIANGLE="$CFLAGS -w -ffloat-store"
+CFLAGS_TRIANGLE="-O2 -w -ffloat-store"
 CFLAGS_VULNERABLE="-ffloat-store"
 
 # Installation prefix (default is /usr/local)

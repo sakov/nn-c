@@ -69,13 +69,13 @@
 #include <math.h>
 #include "nan.h"
 #include "hash.h"
-#include "istack.h"
-#include "delaunay.h"
 #include "nn.h"
-#include "nn_internal.h"
+#include "nncommon.h"
+#include "istack_internal.h"
+#include "delaunay_internal.h"
 
 struct nnpi {
-    delaunay* d;
+    dsearch* ds;
     double wmin;
     int n;                      /* number of points processed */
     /*
@@ -108,7 +108,7 @@ nnpi* nnpi_create(delaunay* d)
 {
     nnpi* nn = malloc(sizeof(nnpi));
 
-    nn->d = d;
+    nn->ds = dsearch_build(d);
     nn->wmin = -DBL_MAX;
     nn->n = 0;
     nn->ncircles = 0;
@@ -127,6 +127,7 @@ nnpi* nnpi_create(delaunay* d)
  */
 void nnpi_destroy(nnpi* nn)
 {
+    dsearch_destroy(nn->ds);
     free(nn->weights);
     free(nn->vertices);
     free(nn);
@@ -186,7 +187,7 @@ static void nnpi_add_weight(nnpi* nn, int vertex, double w)
  */
 static void nnpi_triangle_process(nnpi* nn, point* p, int i)
 {
-    delaunay* d = nn->d;
+    delaunay* d = nn->ds->d;
     triangle* t = &d->triangles[i];
     circle* c = &d->circles[i];
     circle cs[3];
@@ -289,12 +290,12 @@ static void nnpi_triangle_process(nnpi* nn, point* p, int i)
             } else {
                 int ii;
 
-		/*
-		 * Looking for a matching "bad" triangle. I guess it is
+                /*
+                 * Looking for a matching "bad" triangle. I guess it is
                  * possible that the first circle will come out from
-		 * circle_build2()as "bad", but the matching cicle will not;
-		 * hence the ">" condition below.
-		 */
+                 * circle_build2()as "bad", but the matching cicle will not;
+                 * hence the ">" condition below.
+                 */
                 if (j1bad || cs[j1].r > cs[j2].r) {
                     v[6] = cs[j2].x;
                     v[7] = cs[j2].y;
@@ -379,7 +380,7 @@ static int compare_indexedpoints(const void* pp1, const void* pp2)
 
 static void nnpi_getneighbours(nnpi* nn, point* p, int nt, int* tids, int* n, int** nids)
 {
-    delaunay* d = nn->d;
+    delaunay* d = nn->ds->d;
     istack* neighbours = istack_create();
     indexedpoint* v = NULL;
     int i;
@@ -433,7 +434,7 @@ static void nnpi_getneighbours(nnpi* nn, point* p, int nt, int* tids, int* n, in
 
 static int nnpi_neighbours_process(nnpi* nn, point* p, int n, int* nids)
 {
-    delaunay* d = nn->d;
+    delaunay* d = nn->ds->d;
     int i;
 
     for (i = 0; i < n; ++i) {
@@ -483,7 +484,7 @@ static int _nnpi_calculate_weights(nnpi* nn, point* p)
     int* tids = NULL;
     int i;
 
-    delaunay_circles_find(nn->d, p, &nn->ncircles, &tids);
+    dsearch_circles_find(nn->ds, p, &nn->ncircles, &tids);
     if (nn->ncircles == 0)
         return 1;
 
@@ -540,6 +541,7 @@ static void nnpi_normalize_weights(nnpi* nn)
 
 void nnpi_calculate_weights(nnpi* nn, point* p)
 {
+    delaunay* d = nn->ds->d;
     point pp;
     int nvertices = 0;
     int* vertices = NULL;
@@ -555,8 +557,8 @@ void nnpi_calculate_weights(nnpi* nn, point* p)
 
     nnpi_reset(nn);
 
-    nn->dx = (nn->d->xmax - nn->d->xmin) * EPS_SHIFT;
-    nn->dy = (nn->d->ymax - nn->d->ymin) * EPS_SHIFT;
+    nn->dx = (d->xmax - d->xmin) * EPS_SHIFT;
+    nn->dy = (d->ymax - d->ymin) * EPS_SHIFT;
 
     pp.x = p->x + nn->dx;
     pp.y = p->y + nn->dy;
@@ -625,7 +627,7 @@ static int cmp_iv(const void* p1, const void* p2)
  */
 void nnpi_interpolate_point(nnpi* nn, point* p)
 {
-    delaunay* d = nn->d;
+    delaunay* d = nn->ds->d;
     int i;
 
     nnpi_calculate_weights(nn, p);
@@ -694,15 +696,14 @@ void nnpi_interpolate_point(nnpi* nn, point* p)
 
 /* Performs Natural Neighbours interpolation for an array of points.
  *
- * @param nin Number of input points
+ * @param d Delaunay triangulation
  * @param pin Array of input points [pin]
  * @param wmin Minimal allowed weight
  * @param nout Number of output points
  * @param pout Array of output points [nout]
  */
-void nnpi_interpolate_points(int nin, point pin[], double wmin, int nout, point pout[])
+void nnpi_interpolate_points(delaunay* d, double wmin, int nout, point pout[])
 {
-    delaunay* d = delaunay_build(nin, pin, 0, NULL, 0, NULL);
     nnpi* nn = nnpi_create(d);
     int seed = 0;
     int i;
@@ -731,7 +732,6 @@ void nnpi_interpolate_points(int nin, point pin[], double wmin, int nout, point 
     }
 
     nnpi_destroy(nn);
-    delaunay_destroy(d);
 }
 
 /* Sets minimal allowed weight for Natural Neighbours interpolation.
@@ -845,7 +845,7 @@ void nnhpi_destroy(nnhpi* nn)
 void nnhpi_interpolate(nnhpi* nnhpi, point* p)
 {
     nnpi* nnpi = nnhpi->nnpi;
-    delaunay* d = nnpi->d;
+    delaunay* d = nnpi->ds->d;
     hashtable* ht_weights = nnhpi->ht_weights;
     nn_weights* weights;
     int i;

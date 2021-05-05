@@ -32,10 +32,9 @@
 #include <string.h>
 #include <errno.h>
 #include "config.h"
-#include "delaunay.h"
 #include "nan.h"
 #include "nn.h"
-#include "nn_internal.h"
+#include "nncommon.h"
 
 #define BUFSIZE 1024
 #define EPS 1.0e-15
@@ -44,8 +43,6 @@
 int nn_verbose = 0;
 int nn_test_vertice = -1;
 NN_RULE nn_rule = SIBSON;
-
-#include "version.h"
 
 void nn_quit(char* format, ...)
 {

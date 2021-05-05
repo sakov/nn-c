@@ -20,5 +20,10 @@ To reproduce the example, run "./test.sh" or "make".
 To visualize, in Matlab run "viewexample".
 To clean up, run "make clean"
 
+From v2.0.0 some MPI code has been added to nnbathy. To compile the parallelised
+version change "MPI = no" in ../../makefile to "MPI = yes". To test it run
+"make mpi" and "run cmp". To set the number of cores used change NCPU in
+mpitest.sh.
+
 Good luck!
 Pavel Sakov

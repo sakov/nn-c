@@ -34,7 +34,7 @@ typedef int (*ht_keyeq) (void*, void*);
 
 /** Converts key to an unsigned 32-bit integer (not necessarily unique).
  */
-typedef uint32_t (*ht_key2hash) (void*);
+typedef uint32_t(*ht_key2hash) (void*);
 
 hashtable* ht_create(int size, ht_keycp cp, ht_keyeq eq, ht_key2hash hash);
 

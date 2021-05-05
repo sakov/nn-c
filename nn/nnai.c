@@ -26,9 +26,10 @@
 #include <string.h>
 #include <math.h>
 #include "nan.h"
-#include "delaunay.h"
 #include "nn.h"
-#include "nn_internal.h"
+#include "nncommon.h"
+#include "delaunay.h"
+#include "nnpi.h"
 
 typedef struct {
     int nvertices;

@@ -22,11 +22,11 @@
  *
  *****************************************************************************/
 
+#include <stdlib.h>
 #include <math.h>
-#include "delaunay.h"
 #include "nan.h"
 #include "nn.h"
-#include "nn_internal.h"
+#include "nncommon.h"
 
 #define MULT 1.0e+7
 

@@ -18,16 +18,14 @@
 #if !defined(_NN_H)
 #define _NN_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+extern char* NN_VERSION;
 
 typedef enum { SIBSON, NON_SIBSONIAN } NN_RULE;
 
 /* "point" is a basic data structure in this package.
  */
-#if !defined(_POINT_STRUCT)
-#define _POINT_STRUCT
+#if !defined(_STRUCT_POINT)
+#define _STRUCT_POINT
 typedef struct {
     double x;
     double y;
@@ -35,32 +33,11 @@ typedef struct {
 } point;
 #endif
 
-/* Constructors for interpolators in this package require Delaunay
- * triangulation of the input data.
- */
-#if !defined(_DELAUNAY_STRUCT)
-#define _DELAUNAY_STRUCT
+#if !defined(_STRUCT_DELAUNAY)
+#define _STRUCT_DELAUNAY
 struct delaunay;
 typedef struct delaunay delaunay;
 #endif
-
-/** Builds Delaunay triangulation of the given array of points.
- *
- * @param np Number of points
- * @param points Array of points [np] (input)
- * @param ns Number of forced segments
- * @param segments Array of (forced) segment endpoint indices [2*ns]
- * @param nh Number of holes
- * @param holes Array of hole (x,y) coordinates [2*nh]
- * @return Delaunay triangulation structure with triangulation results
- */
-delaunay* delaunay_build(int np, point points[], int ns, int segments[], int nh, double holes[]);
-
-/** Destroys Delaunay triangulation.
- *
- * @param d Structure to be destroyed
- */
-void delaunay_destroy(delaunay* d);
 
 /** Smoothes the input point array by averaging the input x,y and z values
  ** for each cell within virtual rectangular nx by ny grid. The corners of the
@@ -177,7 +154,7 @@ void lpi_interpolate_point(lpi* l, point* p);
  * @param nout Number of ouput points
  * @param pout Array of output points [nout]
  */
-void lpi_interpolate_points(int nin, point pin[], int nout, point pout[]);
+void lpi_interpolate_points(delaunay* d, int nout, point pout[]);
 
 /** `nnpi' -- "Natural Neighbours Point Interpolator" is a structure for
  ** Natural Neighbours interpolation of data on a "point-to-point" basis.
@@ -217,7 +194,7 @@ void nnpi_interpolate_point(nnpi* nn, point* p);
  * @param nout Number of output points
  * @param pout Array of output points [nout]
  */
-void nnpi_interpolate_points(int nin, point pin[], double wmin, int nout, point pout[]);
+void nnpi_interpolate_points(delaunay* d, double wmin, int nout, point pout[]);
 
 /** Sets minimal allowed weight for Natural Neighbours interpolation.
  *

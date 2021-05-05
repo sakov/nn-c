@@ -28,9 +28,8 @@
 #include <math.h>
 #include "config.h"
 #include "nan.h"
-#include "delaunay.h"
 #include "nn.h"
-#include "nn_internal.h"
+#include "nncommon.h"
 #include "preader.h"
 
 #define BUFSIZE 1024

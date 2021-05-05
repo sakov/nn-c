@@ -42,6 +42,9 @@ make tests
 ./nnai_test
 ./ht_test
 
+From v2.0.0 some MPI code has been added to delaunay.c and nnbathy.c. To compile
+it change "MPI = no" in the makefile to "MPI = yes". To test MPI code run
+"make mpi" and "make cmp" in examples/2.
 
 3. Apart from the `nn' library, this code contains `nnbathy' -- a simple 
 interpolation utility/example based on `nn'.

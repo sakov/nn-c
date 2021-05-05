@@ -24,9 +24,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "nan.h"
-#include "delaunay.h"
 #include "nn.h"
-#include "nn_internal.h"
+#include "nncommon.h"
+#include "delaunay_internal.h"
 
 typedef struct {
     double w[3];
@@ -35,6 +35,7 @@ typedef struct {
 struct lpi {
     delaunay* d;
     lweights* weights;
+    int first_id;
 };
 
 int delaunay_xytoi(delaunay* d, point* p, int seed);
@@ -51,6 +52,7 @@ lpi* lpi_build(delaunay* d)
 
     l->d = d;
     l->weights = malloc(d->ntriangles * sizeof(lweights));
+    l->first_id = -1;
 
     for (i = 0; i < d->ntriangles; ++i) {
         triangle* t = &d->triangles[i];
@@ -107,12 +109,12 @@ void lpi_destroy(lpi* l)
 void lpi_interpolate_point(lpi* l, point* p)
 {
     delaunay* d = l->d;
-    int tid = delaunay_xytoi(d, p, d->first_id);
+    int tid = delaunay_xytoi(d, p, l->first_id);
 
     if (tid >= 0) {
         lweights* lw = &l->weights[tid];
 
-        d->first_id = tid;
+        l->first_id = tid;
         p->z = p->x * lw->w[0] + p->y * lw->w[1] + lw->w[2];
     } else
         p->z = NaN;
@@ -125,9 +127,8 @@ void lpi_interpolate_point(lpi* l, point* p)
  * @param nout Number of ouput points
  * @param pout Array of output points [nout]
  */
-void lpi_interpolate_points(int nin, point pin[], int nout, point pout[])
+void lpi_interpolate_points(delaunay* d, int nout, point pout[])
 {
-    delaunay* d = delaunay_build(nin, pin, 0, NULL, 0, NULL);
     lpi* l = lpi_build(d);
     int seed = 0;
     int i;
@@ -153,5 +154,4 @@ void lpi_interpolate_points(int nin, point pin[], int nout, point pout[])
     }
 
     lpi_destroy(l);
-    delaunay_destroy(d);
 }

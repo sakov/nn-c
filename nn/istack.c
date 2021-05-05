@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "istack.h"
+#include "istack_internal.h"
 
 istack* istack_create(void)
 {

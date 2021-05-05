@@ -15,6 +15,7 @@ INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_DATA = @INSTALL_DATA@
 
+MPI = no
 CC = @CC@
 CFLAGS = @CFLAGS@
 CFLAGS_TRIANGLE = @CFLAGS_TRIANGLE@
@@ -22,11 +23,11 @@ CFLAGS_VULNERABLE = @CFLAGS_VULNERABLE@
 LDFLAGS = @LDFLAGS@
 
 AR = @AR@
-ARFLAGS = cru
+ARFLAGS = cr
 
 MLIB = -lm
 
-LIBSRC =\
+SRC_LIB =\
 delaunay.c\
 hash.c\
 istack.c\
@@ -36,21 +37,23 @@ nnai.c\
 nnpi.c\
 nncommon.c\
 nncommon-vulnerable.c\
-preader.c
+preader.c\
+version.c
 
-UTILSRC=\
-nnbathy.c
-
-HEADERS=\
+HDR_LIB =\
 delaunay.h\
+delaunay_internal.h\
 hash.h\
 istack.h\
+istack_internal.h\
 minell.h\
 nan.h\
 nn.h\
-nn_internal.h\
-preader.h\
-version.h
+nnpi.h\
+preader.h
+
+SRC_UTILS=\
+nnbathy.c
 
 PROGRAMS =\
 minell\
@@ -61,14 +64,22 @@ nnai_test\
 nnphi_test\
 ht_test
 
-LIBOBJS = $(LIBSRC:.c=.o)
+OBJ_LIB = $(SRC_LIB:.c=.o)
 
 all: libnn.a $(PROGRAMS)
 
 minell: minell.c
 	$(CC) -o minell minell.c -DME_STANDALONE $(CFLAGS) -I. $(LDFLAGS) $(MLIB)
 
-nnbathy: override CFLAGS+=-DNN_SERIAL
+ifeq ($(MPI), yes)
+delaunay.o: override CC = mpicc
+delaunay.o: override CFLAGS += -DMPI -DUSE_SHMEM
+nnbathy: override CC = mpicc
+nnbathy: override CFLAGS += -DMPI -DUSE_SHMEM
+else
+nnbathy: override CFLAGS += -DNN_SERIAL
+endif
+
 nnbathy: libnn.a nnbathy.c
 	$(CC) -o nnbathy nnbathy.c $(CFLAGS) -I. $(LDFLAGS) libnn.a $(MLIB)
 
@@ -76,13 +87,13 @@ standalone: override LDFLAGS+=-static
 standalone: $(PROGRAMS)
 	strip $(PROGRAMS)
 
-libnn.a: triangle.o $(LIBOBJS)
-	$(AR) $(ARFLAGS) libnn.a $(LIBOBJS) triangle.o
+libnn.a: triangle.o $(OBJ_LIB)
+	$(AR) $(ARFLAGS) libnn.a $(OBJ_LIB) triangle.o
 	chmod go+r libnn.a
 
 nncommon-vulnerable.o: override CFLAGS+=$(CFLAGS_VULNERABLE)
 
-triangle.o: triangle.c
+triangle.o: triangle.c triangle.h
 	$(CC) -c -DTRILIBRARY $(CFLAGS_TRIANGLE) -I. triangle.c
 
 tests: libnn.a $(TESTS)
@@ -96,7 +107,7 @@ nnphi_test:
 ht_test:
 	$(CC) -o ht_test hash.c -DHT_TEST $(CFLAGS) -I. $(MLIB)
 
-%.o: %.c
+%.o: %.c makefile $(HDR_LIB)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 installdirs:
@@ -143,5 +154,5 @@ ex6clean:
 distclean: clean configclean ex1clean ex2clean ex3clean ex4clean ex5clean ex6clean
 
 indent:
-	indent -T FILE -T NN_ALGORITHM -T point -T delaunay -T lpi -T nnpi -T nnhpi -T indexedpoint -T nnai -T ht_bucket -T hashtable -T istack -T triangle -T triangle_neighbours -T circle -T nn_weights -T lweights -T minell -T specs -T reader -T preader -T grid $(LIBSRC) $(UTILSRC) $(HEADERS)
+	indent -T FILE -T NN_ALGORITHM -T point -T delaunay -Tdsearch -T lpi -T nnpi -T nnhpi -T indexedpoint -T nnai -T ht_bucket -T hashtable -T istack -T triangle -T triangle_neighbours -T circle -T nn_weights -T lweights -T minell -T specs -T reader -T preader -T grid $(SRC_LIB) $(SRC_UTILS) $(HDR_LIB)
 	rm -f *~

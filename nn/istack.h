@@ -24,12 +24,6 @@ struct istack;
 typedef struct istack istack;
 #endif
 
-struct istack {
-    int n;
-    int nallocated;
-    int* v;
-};
-
 istack* istack_create(void);
 void istack_destroy(istack* s);
 void istack_push(istack* s, int v);

@@ -19,22 +19,23 @@
 #if !defined(_NAN_H)
 #define _NAN_H
 
-#if defined(__GNUC__) && !defined(__INTEL_COMPILER)
+#include <math.h>
 
+#if defined(NAN)
+#define NaN NAN
+
+#elif defined(__GNUC__) && !defined(__INTEL_COMPILER)
 static const double NaN = 0.0 / 0.0;
 
 #elif defined(_WIN32)
-
 static unsigned _int64 lNaN = ((unsigned _int64) 1 << 63) - 1;
 
 #define NaN (*(double*)&lNaN)
 
 #else
-
 static const long long lNaN = ((unsigned long long) 1 << 63) - 1;
 
 #define NaN (*(double*)&lNaN)
-
 #endif
 
 #endif

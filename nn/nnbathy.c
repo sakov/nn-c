@@ -31,15 +31,20 @@
 #include <float.h>
 #include <math.h>
 #include <errno.h>
+#if defined(MPI)
+#include <assert.h>
+#include <mpi.h>
+#endif
 #include "config.h"
 #include "nan.h"
 #include "minell.h"
 #include "nn.h"
-#if defined(NN_SERIAL)
+#include "delaunay.h"
+#if defined(NN_SERIAL) || defined(MPI)
 #include "preader.h"
 #endif
 
-#if !defined(NN_SERIAL)
+#if !defined(NN_SERIAL) || defined(MPI)
 #define NMAX 4096
 #endif
 #define STRBUFSIZE 256
@@ -64,14 +69,14 @@ typedef struct {
     double xmax;
     double ymin;
     double ymax;
-#if defined(NN_SERIAL)
+#if defined(NN_SERIAL) || defined(MPI)
     int npoints;
 #endif
 } specs;
 
 static void version()
 {
-    printf("  nnbathy/nn version %s\n", nn_version);
+    printf("  nnbathy/nn version %s\n", NN_VERSION);
     exit(0);
 }
 
@@ -87,7 +92,7 @@ static void usage()
     printf("               [-N]\n");
     printf("               [-P alg={l|nn|ns}]\n");
     printf("               [-W <min weight>]\n");
-#if defined(NN_SERIAL)
+#if defined(NN_SERIAL) || defined(MPI)
     printf("               [-%% [npoints]]\n");
 #endif
     printf("Options:\n");
@@ -128,7 +133,7 @@ static void usage()
     printf("                      weight for a vertex (normally \"-1\" or so; lower\n");
     printf("                      values correspond to lower reliability; \"0\" means\n");
     printf("                      no extrapolation)\n");
-#if defined(NN_SERIAL)
+#if defined(NN_SERIAL) || defined(MPI)
     printf("  -%% [npoints]     -- print percent of the work done to standard error;\n");
     printf("                      npoints -- total number of points to be done (optional\n");
     printf("                      with -n)\n");
@@ -152,6 +157,11 @@ static void quit(char* format, ...)
     vfprintf(stderr, format, args);
     va_end(args);
 
+#if defined(MPI)
+    MPI_Abort(MPI_COMM_WORLD, 1);       /* kill all MPI jobs */
+#else
+    abort();                    /* raise SIGABRT for debugging */
+#endif
     exit(1);
 }
 
@@ -195,7 +205,7 @@ static specs* specs_create(void)
     s->xmax = NaN;
     s->ymin = NaN;
     s->ymax = NaN;
-#if defined(NN_SERIAL)
+#if defined(NN_SERIAL) || defined(MPI)
     s->npoints = 0;
 #endif
     return s;
@@ -243,7 +253,7 @@ static void parse_commandline(int argc, char* argv[], specs* s)
                 quit("no grid dimensions found after -n\n");
             if (sscanf(argv[i], "%dx%d", &s->nx, &s->ny) != 2)
                 quit("could not read grid dimensions after \"-n\"\n");
-#if defined(NN_SERIAL)
+#if defined(NN_SERIAL) || defined(MPI)
             if (s->nx <= 0 || s->ny <= 0)
 #else
             if (s->nx <= 0 || s->nx > NMAX || s->ny <= 0 || s->ny > NMAX)
@@ -334,7 +344,7 @@ static void parse_commandline(int argc, char* argv[], specs* s)
                     quit("could not read grid dimensions after \"-D\"\n");
                 if (s->nxd <= 0 || s->nyd <= 0)
                     quit("invalid value for nx = %d or ny = %d after -D option\n", s->nxd, s->nyd);
-#if !defined(NN_SERIAL)
+#if !defined(NN_SERIAL) || defined(MPI)
                 if (s->nxd > NMAX || s->nyd > NMAX)
                     quit("too big value after -D option (expected < %d)\n", NMAX);
 #endif
@@ -409,7 +419,7 @@ static void parse_commandline(int argc, char* argv[], specs* s)
             i++;
             nn_verbose = 2;
             break;
-#if defined(NN_SERIAL)
+#if defined(NN_SERIAL) || defined(MPI)
         case '%':
             i++;
             if (i < argc && argv[i][0] != '-') {
@@ -436,7 +446,7 @@ static void parse_commandline(int argc, char* argv[], specs* s)
         if (s->nxd <= 0 || s->nyd <= 0)
             quit("invalid grid size for thinning\n");
     }
-#if defined(NN_SERIAL)
+#if defined(NN_SERIAL) || defined(MPI)
     if (s->npoints == 1) {
         if (s->nx <= 0)
             s->npoints = 0;
@@ -460,11 +470,13 @@ static void points_write(int n, point* points)
     }
 }
 
+#if !defined(MPI)
 #if !defined(NN_SERIAL)
 /* A simpler version of nnbathy that allocates the whole output grid in memory
  */
 int main(int argc, char* argv[])
 {
+    delaunay* d = NULL;
     specs* s = specs_create();
     int nin = 0;
     point* pin = NULL;
@@ -517,10 +529,14 @@ int main(int argc, char* argv[])
         points_scale(nout, pout, k);
     }
 
+    d = delaunay_build(nin, pin, 0, NULL, 0, NULL);
+
     if (s->linear)
-        lpi_interpolate_points(nin, pin, nout, pout);
+        lpi_interpolate_points(d, nout, pout);
     else
-        nnpi_interpolate_points(nin, pin, s->wmin, nout, pout);
+        nnpi_interpolate_points(d, s->wmin, nout, pout);
+
+    delaunay_destroy(d);
 
     if (s->invariant)
         minell_rescalepoints(me, nout, pout);
@@ -553,8 +569,6 @@ int main(int argc, char* argv[])
     delaunay* d = NULL;
     void* interpolator = NULL;
     int ndone = 0;
-    char percent_prev[STRBUFSIZE] = "";
-    char percent[STRBUFSIZE];
 
     parse_commandline(argc, argv, s);
 
@@ -622,9 +636,12 @@ int main(int argc, char* argv[])
         ndone++;
 
         if (s->npoints > 0) {
-            snprintf(percent, STRBUFSIZE, "  %5.1f%% done\r", 100.0 * ndone / s->npoints);
-            if (strcmp(percent, percent_prev) != 0) {
-                strcpy(percent_prev, percent);
+            int quant = s->npoints / 1000;
+
+            if (quant == 0 || ndone % quant == 0) {
+                char percent[STRBUFSIZE];
+
+                snprintf(percent, STRBUFSIZE, "  %5.1f%% done\r", 100.0 * ndone / s->npoints);
                 fprintf(stderr, "%s", percent);
                 fflush(stderr);
             }
@@ -643,6 +660,235 @@ int main(int argc, char* argv[])
     preader_destroy(pr);
     specs_destroy(s);
     free(pin);
+
+    return 0;
+}
+#endif
+#else                           /* MPI */
+
+#define MPIBUFSIZE 4096
+
+int main(int argc, char* argv[])
+{
+    specs* s = specs_create();
+    int nin = 0;
+    point* pin = NULL;
+    minell* me = NULL;
+    point* pout = NULL;
+    double k = NaN;
+    preader* pr = NULL;
+
+#if defined(USE_SHMEM)
+    MPI_Win sm_win_inputdata = MPI_WIN_NULL;
+#endif
+
+    delaunay* d = NULL;
+    void* interpolator = NULL;
+
+    point* buffer = NULL;
+    int ndone, nsent;
+
+    int* nremain = NULL;
+    int nremain_total, r;
+
+    parse_commandline(argc, argv, s);
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocesses);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (nn_verbose && rank == 0)
+        fprintf(stderr, "  MPI: initialised %d process(es)\n", nprocesses);
+    MPI_Barrier(MPI_COMM_WORLD);
+#if defined(USE_SHMEM)
+    {
+        (void) MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &sm_comm);
+        (void) MPI_Comm_rank(sm_comm, &sm_comm_rank);
+        (void) MPI_Comm_size(sm_comm, &sm_comm_size);
+    }
+#endif
+
+    if (s->fin == NULL)
+        quit("no input data\n");
+
+    if (!s->generate_points && s->fout == NULL && !s->nointerp)
+        quit("no output grid specified\n");
+
+#if defined(USE_SHMEM)
+    if (sm_comm_rank == 0)
+#endif
+        points_read(s->fin, 3, &nin, &pin);
+
+#if defined(USE_SHMEM)
+    /*
+     * Put input data into shared memory.
+     */
+    {
+        MPI_Aint size;
+        void* data = NULL;
+
+        (void) MPI_Bcast(&nin, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+        assert(sizeof(MPI_Aint) == sizeof(size_t));
+        size = nin * sizeof(point);
+        (void) MPI_Win_allocate_shared((sm_comm_rank == 0) ? size : 0, sizeof(point), MPI_INFO_NULL, sm_comm, &data, &sm_win_inputdata);
+        if (sm_comm_rank == 0) {
+            memcpy(data, pin, size);
+            free(pin);
+            pin = data;
+            if (nn_verbose)
+                fprintf(stderr, "  MPI: put %u bytes of input data into shared memory\n", (unsigned int) size);
+        } else {
+            int disp_unit;
+            MPI_Aint my_size;
+
+            MPI_Win_shared_query(sm_win_inputdata, 0, &my_size, &disp_unit, &pin);
+            assert(my_size == size);
+            assert(disp_unit == sizeof(point));
+            assert(pin != NULL);
+        }
+        MPI_Win_fence(0, sm_win_inputdata);
+        MPI_Barrier(sm_comm);
+    }
+#endif
+
+    if (nin < 3)
+        return 0;
+
+    if (s->thin == 1)
+        points_thingrid(&nin, &pin, s->nxd, s->nyd);
+    else if (s->thin == 2)
+        points_thinlin(&nin, &pin, s->rmax);
+
+    if (s->nointerp) {
+        points_write(nin, pin);
+        specs_destroy(s);
+        free(pin);
+        return 0;
+    }
+
+    if (s->generate_points) {
+        points_getrange(nin, pin, s->zoom, &s->xmin, &s->xmax, &s->ymin, &s->ymax);
+        pr = preader_create1(s->xmin, s->xmax, s->ymin, s->ymax, s->nx, s->ny);
+    } else
+        pr = preader_create2(s->fout);
+
+    if (s->invariant) {
+        me = minell_build(nin, pin);
+        minell_scalepoints(me, nin, pin);
+    } else if (s->square)
+        k = points_scaletosquare(nin, pin);
+
+    d = delaunay_build(nin, pin, 0, NULL, 0, NULL);
+
+    if (s->linear)
+        interpolator = lpi_build(d);
+    else {
+        interpolator = nnpi_create(d);
+        nnpi_setwmin(interpolator, s->wmin);
+    }
+
+    ndone = 0;
+    nsent = 0;
+    buffer = malloc(MPIBUFSIZE * sizeof(point));
+    while ((pout = preader_getpoint(pr)) != NULL) {
+        int activeprocess = (ndone / MPIBUFSIZE) % nprocesses;
+        int id = ndone % MPIBUFSIZE;
+        int iter;
+
+        if (activeprocess != rank)
+            goto postprocess;
+
+        if (s->invariant)
+            minell_scalepoints(me, 1, pout);
+        else if (s->square)
+            points_scale(1, pout, k);
+
+        if (s->linear)
+            lpi_interpolate_point(interpolator, pout);
+        else
+            nnpi_interpolate_point(interpolator, pout);
+
+        if (s->invariant)
+            minell_rescalepoints(me, 1, pout);
+        else if (s->square)
+            points_scale(1, pout, 1.0 / k);
+
+        buffer[id] = *pout;
+
+      postprocess:
+        ndone++;
+
+        if (rank == 0 && s->npoints > 0) {
+            int quant = s->npoints / 1000;
+
+            if (quant == 0 || ndone % quant == 0) {
+                char percent[STRBUFSIZE];
+
+                snprintf(percent, STRBUFSIZE, "  %5.1f%% done\r", 100.0 * ndone / s->npoints);
+                fprintf(stderr, "%s", percent);
+                fflush(stderr);
+            }
+        }
+
+        iter = ndone / MPIBUFSIZE / nprocesses;
+        if (iter > nsent) {
+            if (rank == 0) {
+                int r;
+
+                points_write(MPIBUFSIZE, buffer);
+                for (r = 1; r < nprocesses; ++r) {
+                    (void) MPI_Recv(buffer, MPIBUFSIZE * 3, MPI_DOUBLE, r, iter, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                    points_write(MPIBUFSIZE, buffer);
+                }
+            } else {
+                (void) MPI_Send(buffer, MPIBUFSIZE * 3, MPI_DOUBLE, 0, iter, MPI_COMM_WORLD);
+            }
+            nsent = iter;
+        }
+    }
+    /*
+     * write remaining results
+     */
+    nremain = calloc(nprocesses, sizeof(int));
+    nremain_total = ndone - nsent * nprocesses * MPIBUFSIZE;
+    for (r = 0; r < nprocesses; ++r) {
+        if (nremain_total >= MPIBUFSIZE) {
+            nremain[r] = MPIBUFSIZE;
+            nremain_total -= MPIBUFSIZE;
+        } else {
+            nremain[r] = nremain_total;
+            nremain_total = 0;
+        }
+    }
+    if (rank == 0) {
+        points_write(nremain[0], buffer);
+        for (r = 1; r < nprocesses; ++r) {
+            (void) MPI_Recv(buffer, nremain[r] * 3, MPI_DOUBLE, r, nsent + 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            points_write(nremain[r], buffer);
+        }
+    } else
+        (void) MPI_Send(buffer, nremain[r] * 3, MPI_DOUBLE, 0, nsent + 1, MPI_COMM_WORLD);
+    free(nremain);
+    free(buffer);
+    if (s->npoints > 0 && rank == 0)
+        fprintf(stderr, "                \r");
+
+    if (me != NULL)
+        minell_destroy(me);
+    if (s->linear)
+        lpi_destroy(interpolator);
+    else
+        nnpi_destroy(interpolator);
+    delaunay_destroy(d);
+    preader_destroy(pr);
+    specs_destroy(s);
+#if !defined(USE_SHMEM)
+    free(pin);
+#else
+    MPI_Win_free(&sm_win_inputdata);
+#endif
+
+    MPI_Finalize();
 
     return 0;
 }
