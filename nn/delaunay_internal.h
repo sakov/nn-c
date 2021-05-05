@@ -63,7 +63,7 @@ typedef struct {
 int delaunay_xytoi(delaunay* d, point* p, int seed);
 
 dsearch* dsearch_build(delaunay* d);
-void dsearch_destroy(dsearch * ds);
-void dsearch_circles_find(dsearch * d, point* p, int* n, int** out);
+void dsearch_destroy(dsearch* ds);
+void dsearch_circles_find(dsearch* d, point* p, int* n, int** out);
 
 #endif                          /* _DELAUNAY_INTERNAL_H */

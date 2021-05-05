@@ -468,6 +468,7 @@ static void points_write(int n, point* points)
         else
             printf("%.15g %.15g %.15g\n", p->x, p->y, p->z);
     }
+    fflush(stdout);
 }
 
 #if !defined(MPI)

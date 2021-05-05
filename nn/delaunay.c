@@ -436,7 +436,7 @@ dsearch* dsearch_build(delaunay* d)
 
 /**
  */
-void dsearch_destroy(dsearch * ds)
+void dsearch_destroy(dsearch* ds)
 {
     if (ds->flags != NULL)
         free(ds->flags);
@@ -491,7 +491,7 @@ int delaunay_xytoi(delaunay* d, point* p, int id)
     return id;
 }
 
-static void dsearch_addflag(dsearch * ds, int i)
+static void dsearch_addflag(dsearch* ds, int i)
 {
     if (ds->nflags == ds->nflagsallocated) {
         ds->nflagsallocated += N_FLAGS_INC;
@@ -501,7 +501,7 @@ static void dsearch_addflag(dsearch * ds, int i)
     ds->nflags++;
 }
 
-static void dsearch_resetflags(dsearch * ds)
+static void dsearch_resetflags(dsearch* ds)
 {
     int i;
 
@@ -529,7 +529,7 @@ static void dsearch_resetflags(dsearch * ds)
  * search algorithms. It not 100% clear though whether this will lead to a
  * substantial speed gains because of the check on convex hall involved.
  */
-void dsearch_circles_find(dsearch * ds, point* p, int* n, int** out)
+void dsearch_circles_find(dsearch* ds, point* p, int* n, int** out)
 {
     delaunay* d = ds->d;
 

@@ -1,3 +1,14 @@
+v. 2.0.1,  5 May 2021
+	-- Added fflush() to points_write(), which seems to be the problem with
+	   large number of CPUs.
+v. 2.0.0,  5 May 2021
+	-- Quite a few structural changes. Split `struct delaunay' into
+	   `struct delaunay' and `struct dsearch'.
+	-- Put some MPI code into delaunay.c and nnbathy.c. See README and
+	   examples/2/README for details. It targets (but not limited to) very
+           large datasets. In particular, it puts the triangulation into shared
+	   memory. This shared memory functionality of MPI3 can be stripped by
+	   compiling without -DUSE_SHMEM.
 v. 1.86.2, 8 June 2017
         -- Minor portability realated changes in hash.[ch]
 	-- A minor change in makefile
