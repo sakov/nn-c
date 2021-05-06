@@ -469,7 +469,6 @@ static void points_write(int n, point* points)
         else
             printf("%.15g %.15g %.15g\n", p->x, p->y, p->z);
     }
-    fflush(stdout);
 }
 
 #if !defined(MPI)
@@ -794,7 +793,6 @@ int main(int argc, char* argv[])
     buffer = malloc(MPIBUFSIZE * sizeof(point));
     while ((pout = preader_getpoint(pr)) != NULL) {
         int activeprocess = (ndone / MPIBUFSIZE) % nprocesses;
-        int id = ndone % MPIBUFSIZE;
         int iter;
 
         if (activeprocess != rank)
@@ -815,7 +813,7 @@ int main(int argc, char* argv[])
         else if (s->square)
             points_scale(1, pout, 1.0 / k);
 
-        buffer[id] = *pout;
+        buffer[ndone % MPIBUFSIZE] = *pout;
 
       postprocess:
         ndone++;
@@ -868,6 +866,7 @@ int main(int argc, char* argv[])
             (void) MPI_Recv(buffer, nremain[r] * 3, MPI_DOUBLE, r, nsent + 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             points_write(nremain[r], buffer);
         }
+        fflush(stdout);
     } else
         (void) MPI_Send(buffer, nremain[r] * 3, MPI_DOUBLE, 0, nsent + 1, MPI_COMM_WORLD);
     free(nremain);
