@@ -840,12 +840,12 @@ int main(int argc, char* argv[])
                     (void) MPI_Recv(buffer, MPIBUFSIZE * 3, MPI_DOUBLE, r, iter, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                     points_write(MPIBUFSIZE, buffer);
                 }
-            } else {
+            } else
                 (void) MPI_Send(buffer, MPIBUFSIZE * 3, MPI_DOUBLE, 0, iter, MPI_COMM_WORLD);
-            }
             nsent = iter;
         }
     }
+
     /*
      * write remaining results
      */
@@ -868,7 +868,8 @@ int main(int argc, char* argv[])
         }
         fflush(stdout);
     } else
-        (void) MPI_Send(buffer, nremain[r] * 3, MPI_DOUBLE, 0, nsent + 1, MPI_COMM_WORLD);
+        (void) MPI_Send(buffer, nremain[rank] * 3, MPI_DOUBLE, 0, nsent + 1, MPI_COMM_WORLD);
+
     free(nremain);
     free(buffer);
     if (s->npoints > 0 && rank == 0)

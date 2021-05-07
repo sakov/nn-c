@@ -1,3 +1,5 @@
+v. 2.0.2,  7 May 2021
+	-- Corrected defect in MPI section of nnbathy.c.
 v. 2.0.1,  5 May 2021
 	-- Added fflush() to points_write(), which seems to be the problem with
 	   large number of CPUs.
