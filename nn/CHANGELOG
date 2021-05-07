@@ -1,3 +1,7 @@
+v. 2.0.3,  7 May 2021
+	-- Tuned a bit the distribution of load in the MPI version of nnbathy.
+	   Now the master interpolates if the number of CPUs <= 3; otherwise it
+	   only collects and writes the results.
 v. 2.0.2,  7 May 2021
 	-- Corrected defect in MPI section of nnbathy.c.
 v. 2.0.1,  5 May 2021

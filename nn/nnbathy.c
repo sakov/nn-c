@@ -666,8 +666,15 @@ int main(int argc, char* argv[])
 }
 #endif
 #else                           /* MPI */
-
+/*
+ * the number of points assigned to each cpu to work on at a time
+ */
 #define MPIBUFSIZE 4096
+/*
+ * the maximal number of cpus when master interpolates as other workers;
+ * otherwise it is used for collecting and writing results only
+ */
+#define N_IDLEMASTER 3
 
 int main(int argc, char* argv[])
 {
@@ -687,7 +694,7 @@ int main(int argc, char* argv[])
     void* interpolator = NULL;
 
     point* buffer = NULL;
-    int ndone, nsent;
+    int nactiveprocesses, firstactiveprocess, ndone, nsent;
 
     int* nremain = NULL;
     int nremain_total, r;
@@ -788,12 +795,18 @@ int main(int argc, char* argv[])
         nnpi_setwmin(interpolator, s->wmin);
     }
 
-    ndone = 0;
-    nsent = 0;
+    /*
+     * interpolate
+     */
+    ndone = 0;                  /* number of points processed */
+    nsent = 0;                  /* number of exchange sessions done */
+    nactiveprocesses = (nprocesses <= N_IDLEMASTER) ? nprocesses : nprocesses - 1;
+    firstactiveprocess = (nprocesses <= N_IDLEMASTER) ? 0 : 1;
     buffer = malloc(MPIBUFSIZE * sizeof(point));
     while ((pout = preader_getpoint(pr)) != NULL) {
-        int activeprocess = (ndone / MPIBUFSIZE) % nprocesses;
-        int iter;
+        int activeprocess, iter;
+
+        activeprocess = (ndone / MPIBUFSIZE) % nactiveprocesses + firstactiveprocess;
 
         if (activeprocess != rank)
             goto postprocess;
@@ -830,12 +843,16 @@ int main(int argc, char* argv[])
             }
         }
 
-        iter = ndone / MPIBUFSIZE / nprocesses;
+        iter = ndone / MPIBUFSIZE / nactiveprocesses;
         if (iter > nsent) {
+            /*
+             * start exchange session
+             */
             if (rank == 0) {
                 int r;
 
-                points_write(MPIBUFSIZE, buffer);
+                if (firstactiveprocess == 0)
+                    points_write(MPIBUFSIZE, buffer);
                 for (r = 1; r < nprocesses; ++r) {
                     (void) MPI_Recv(buffer, MPIBUFSIZE * 3, MPI_DOUBLE, r, iter, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                     points_write(MPIBUFSIZE, buffer);
@@ -850,8 +867,8 @@ int main(int argc, char* argv[])
      * write remaining results
      */
     nremain = calloc(nprocesses, sizeof(int));
-    nremain_total = ndone - nsent * nprocesses * MPIBUFSIZE;
-    for (r = 0; r < nprocesses; ++r) {
+    nremain_total = ndone - nsent * nactiveprocesses * MPIBUFSIZE;
+    for (r = firstactiveprocess; r < nprocesses; ++r) {
         if (nremain_total >= MPIBUFSIZE) {
             nremain[r] = MPIBUFSIZE;
             nremain_total -= MPIBUFSIZE;
