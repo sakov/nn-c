@@ -45,7 +45,7 @@
 #include "preader.h"
 #endif
 
-#if !defined(NN_SERIAL) || defined(MPI)
+#if !defined(NN_SERIAL) && !defined(MPI)
 #define NMAX 4096
 #endif
 #define STRBUFSIZE 256
@@ -345,7 +345,7 @@ static void parse_commandline(int argc, char* argv[], specs* s)
                     quit("could not read grid dimensions after \"-D\"\n");
                 if (s->nxd <= 0 || s->nyd <= 0)
                     quit("invalid value for nx = %d or ny = %d after -D option\n", s->nxd, s->nyd);
-#if !defined(NN_SERIAL) || defined(MPI)
+#if !defined(NN_SERIAL) && !defined(MPI)
                 if (s->nxd > NMAX || s->nyd > NMAX)
                     quit("too big value after -D option (expected < %d)\n", NMAX);
 #endif
@@ -669,7 +669,7 @@ int main(int argc, char* argv[])
 /*
  * the number of points assigned to each cpu to work on at a time
  */
-#define MPIBUFSIZE 4096
+#define MPIBUFSIZE 1024
 /*
  * the maximal number of cpus when master interpolates as other workers;
  * otherwise it is used for collecting and writing results only
@@ -799,7 +799,7 @@ int main(int argc, char* argv[])
      * interpolate
      */
     ndone = 0;                  /* number of points processed */
-    nsent = 0;                  /* number of exchange sessions done */
+    nsent = 0;                  /* number of exchange sessions completed */
     nactiveprocesses = (nprocesses <= N_IDLEMASTER) ? nprocesses : nprocesses - 1;
     firstactiveprocess = (nprocesses <= N_IDLEMASTER) ? 0 : 1;
     buffer = malloc(MPIBUFSIZE * sizeof(point));

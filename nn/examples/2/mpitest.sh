@@ -7,7 +7,7 @@ then
     exit 1
 fi
 
-NCPU=2
+NCPU=6
 
 echo ""
 echo -n "Linear interpolation..."

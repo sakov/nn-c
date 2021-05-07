@@ -1,3 +1,7 @@
+v. 2.0.4,  7 May 2021
+	-- A minor correction of #if defined for NMAX in nnbathy.c.
+	-- Reduced MPIBUFSIZE in nnbathy.c from 4096 to 1024. This has a
+	   marginal effect, but seems to work better for larger number of CPUs.
 v. 2.0.3,  7 May 2021
 	-- Tuned a bit the distribution of load in the MPI version of nnbathy.
 	   Now the master interpolates if the number of CPUs <= 3; otherwise it
