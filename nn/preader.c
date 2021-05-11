@@ -57,9 +57,10 @@ struct preader {
     reader* r;
 };
 
-static grid* grid_create(double xmin, double xmax, double ymin, double ymax, int nx, int ny)
+static grid* grid_create(double xmin, double xmax, double ymin, double ymax, int nx, int ny, int j1, int j2)
 {
     grid* g = NULL;
+    int i;
 
     if (nx < 1 || ny < 1)
         return NULL;
@@ -69,10 +70,17 @@ static grid* grid_create(double xmin, double xmax, double ymin, double ymax, int
     g->ny = ny;
     g->nmax = nx * ny;
 
+    if (j1 < 0 || j2 < 0)
+        j1 = 0;
+    else
+        g->nmax = nx * (j2 - j1 + 1);
+
     g->stepx = (nx > 1) ? (xmax - xmin) / (nx - 1) : 0.0;
     g->stepy = (ny > 1) ? (ymax - ymin) / (ny - 1) : 0.0;
     g->x0 = (nx > 1) ? xmin : (xmin + xmax) / 2.0;
     g->p.y = (ny > 1) ? ymin - g->stepy : (ymin + ymax) / 2.0;
+    for (i = 0; i < j1; ++i)
+        g->p.y += g->stepy;
     g->n = 0;
 
     return g;
@@ -173,12 +181,12 @@ static void reader_destroy(reader* r)
     free(r);
 }
 
-preader* preader_create1(double xmin, double xmax, double ymin, double ymax, int nx, int ny)
+preader* preader_create1(double xmin, double xmax, double ymin, double ymax, int nx, int ny, int j1, int j2)
 {
     preader* pr = malloc(sizeof(preader));
 
     pr->r = NULL;
-    pr->g = grid_create(xmin, xmax, ymin, ymax, nx, ny);
+    pr->g = grid_create(xmin, xmax, ymin, ymax, nx, ny, j1, j2);
 
     return pr;
 }
@@ -191,6 +199,11 @@ preader* preader_create2(char* fname)
     pr->r = reader_create(fname);
 
     return pr;
+}
+
+int preader_istype1(preader* pr)
+{
+    return (pr->g != NULL);
 }
 
 point* preader_getpoint(preader* pr)

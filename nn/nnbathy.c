@@ -12,7 +12,7 @@
  *
  * Description:    See usage().
  *
- *                 The default version of nnbathy allocates the whole output
+ *                 The default vers ion of nnbathy allocates the whole output
  *                 grid in memory before interpolating; the compilier flag
  *                 NN_SERIAL compiles a bit more sophisticated version of that
  *                 interpolates in output points on one-by-one basis.
@@ -35,6 +35,9 @@
 #if defined(MPI)
 #include <assert.h>
 #include <mpi.h>
+#if defined(VIAFILE)
+#include "distribute.h"
+#endif
 #endif
 #include "config.h"
 #include "nan.h"
@@ -471,6 +474,22 @@ static void points_write(int n, point* points)
     }
 }
 
+#if defined(MPI) && defined(VIAFILE)
+#include <unistd.h>
+
+static void file_delete(char fname[])
+{
+    int status = -1;
+
+    status = unlink(fname);
+    if (status != 0) {
+        int errno_saved = errno;
+
+        quit("could not delete file \"%s\": %s", fname, strerror(errno_saved));
+    }
+}
+#endif
+
 #if !defined(MPI)
 #if !defined(NN_SERIAL)
 /* A simpler version of nnbathy that allocates the whole output grid in memory
@@ -598,7 +617,7 @@ int main(int argc, char* argv[])
 
     if (s->generate_points) {
         points_getrange(nin, pin, s->zoom, &s->xmin, &s->xmax, &s->ymin, &s->ymax);
-        pr = preader_create1(s->xmin, s->xmax, s->ymin, s->ymax, s->nx, s->ny);
+        pr = preader_create1(s->xmin, s->xmax, s->ymin, s->ymax, s->nx, s->ny, -1, -1);
     } else
         pr = preader_create2(s->fout);
 
@@ -675,7 +694,9 @@ int main(int argc, char* argv[])
  * otherwise it is used for collecting and writing results only
  */
 #define N_IDLEMASTER 3
-
+#if defined(VIAFILE)
+#define BUFSIZE 4096
+#endif
 int main(int argc, char* argv[])
 {
     specs* s = specs_create();
@@ -776,7 +797,13 @@ int main(int argc, char* argv[])
 
     if (s->generate_points) {
         points_getrange(nin, pin, s->zoom, &s->xmin, &s->xmax, &s->ymin, &s->ymax);
-        pr = preader_create1(s->xmin, s->xmax, s->ymin, s->ymax, s->nx, s->ny);
+#if !defined(VIAFILE)
+        pr = preader_create1(s->xmin, s->xmax, s->ymin, s->ymax, s->nx, s->ny, -1, -1);
+#else
+        distribute_iterations(0, s->ny - 1, nprocesses, rank);
+        pr = preader_create1(s->xmin, s->xmax, s->ymin, s->ymax, s->nx, s->ny, my_first_iteration, my_last_iteration);
+        s->npoints = s->nx * (my_last_iteration - my_first_iteration + 1);
+#endif
     } else
         pr = preader_create2(s->fout);
 
@@ -798,97 +825,170 @@ int main(int argc, char* argv[])
     /*
      * interpolate
      */
-    ndone = 0;                  /* number of points processed */
-    nsent = 0;                  /* number of exchange sessions completed */
-    nactiveprocesses = (nprocesses <= N_IDLEMASTER) ? nprocesses : nprocesses - 1;
-    firstactiveprocess = (nprocesses <= N_IDLEMASTER) ? 0 : 1;
-    buffer = malloc(MPIBUFSIZE * sizeof(point));
-    while ((pout = preader_getpoint(pr)) != NULL) {
-        int activeprocess, iter;
+#if defined(VIAFILE)
+    if (!preader_istype1(pr)) {
+#endif
+        ndone = 0;              /* number of points processed */
+        nsent = 0;              /* number of exchange sessions completed */
+        nactiveprocesses = (nprocesses <= N_IDLEMASTER) ? nprocesses : nprocesses - 1;
+        firstactiveprocess = (nprocesses <= N_IDLEMASTER) ? 0 : 1;
+        buffer = malloc(MPIBUFSIZE * sizeof(point));
+        while ((pout = preader_getpoint(pr)) != NULL) {
+            int activeprocess, iter;
 
-        activeprocess = (ndone / MPIBUFSIZE) % nactiveprocesses + firstactiveprocess;
+            activeprocess = (ndone / MPIBUFSIZE) % nactiveprocesses + firstactiveprocess;
 
-        if (activeprocess != rank)
-            goto postprocess;
+            if (activeprocess != rank)
+                goto postprocess;
 
-        if (s->invariant)
-            minell_scalepoints(me, 1, pout);
-        else if (s->square)
-            points_scale(1, pout, k);
+            if (s->invariant)
+                minell_scalepoints(me, 1, pout);
+            else if (s->square)
+                points_scale(1, pout, k);
 
-        if (s->linear)
-            lpi_interpolate_point(interpolator, pout);
-        else
-            nnpi_interpolate_point(interpolator, pout);
+            if (s->linear)
+                lpi_interpolate_point(interpolator, pout);
+            else
+                nnpi_interpolate_point(interpolator, pout);
 
-        if (s->invariant)
-            minell_rescalepoints(me, 1, pout);
-        else if (s->square)
-            points_scale(1, pout, 1.0 / k);
+            if (s->invariant)
+                minell_rescalepoints(me, 1, pout);
+            else if (s->square)
+                points_scale(1, pout, 1.0 / k);
 
-        buffer[ndone % MPIBUFSIZE] = *pout;
+            buffer[ndone % MPIBUFSIZE] = *pout;
 
-      postprocess:
-        ndone++;
+          postprocess:
+            ndone++;
 
-        if (rank == 0 && s->npoints > 0) {
-            int quant = s->npoints / 1000;
+            if (rank == 0 && s->npoints > 0) {
+                int quant = s->npoints / 1000;
 
-            if (quant == 0 || ndone % quant == 0) {
-                char percent[STRBUFSIZE];
+                if (quant == 0 || ndone % quant == 0) {
+                    char percent[STRBUFSIZE];
 
-                snprintf(percent, STRBUFSIZE, "  %5.1f%% done\r", 100.0 * ndone / s->npoints);
-                fprintf(stderr, "%s", percent);
-                fflush(stderr);
+                    snprintf(percent, STRBUFSIZE, "  %5.1f%% done\r", 100.0 * ndone / s->npoints);
+                    fprintf(stderr, "%s", percent);
+                    fflush(stderr);
+                }
+            }
+
+            iter = ndone / MPIBUFSIZE / nactiveprocesses;
+            if (iter > nsent) {
+                /*
+                 * start exchange session
+                 */
+                if (rank == 0) {
+                    int r;
+
+                    if (firstactiveprocess == 0)
+                        points_write(MPIBUFSIZE, buffer);
+                    for (r = 1; r < nprocesses; ++r) {
+                        (void) MPI_Recv(buffer, MPIBUFSIZE * 3, MPI_DOUBLE, r, iter, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                        points_write(MPIBUFSIZE, buffer);
+                    }
+                } else
+                    (void) MPI_Send(buffer, MPIBUFSIZE * 3, MPI_DOUBLE, 0, iter, MPI_COMM_WORLD);
+                nsent = iter;
             }
         }
 
-        iter = ndone / MPIBUFSIZE / nactiveprocesses;
-        if (iter > nsent) {
-            /*
-             * start exchange session
-             */
-            if (rank == 0) {
-                int r;
+        /*
+         * write remaining results
+         */
+        nremain = calloc(nprocesses, sizeof(int));
+        nremain_total = ndone - nsent * nactiveprocesses * MPIBUFSIZE;
+        for (r = firstactiveprocess; r < nprocesses; ++r) {
+            if (nremain_total >= MPIBUFSIZE) {
+                nremain[r] = MPIBUFSIZE;
+                nremain_total -= MPIBUFSIZE;
+            } else {
+                nremain[r] = nremain_total;
+                nremain_total = 0;
+            }
+        }
+        if (rank == 0) {
+            points_write(nremain[0], buffer);
+            for (r = 1; r < nprocesses; ++r) {
+                (void) MPI_Recv(buffer, nremain[r] * 3, MPI_DOUBLE, r, nsent + 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                points_write(nremain[r], buffer);
+            }
+            fflush(stdout);
+        } else
+            (void) MPI_Send(buffer, nremain[rank] * 3, MPI_DOUBLE, 0, nsent + 1, MPI_COMM_WORLD);
 
-                if (firstactiveprocess == 0)
-                    points_write(MPIBUFSIZE, buffer);
-                for (r = 1; r < nprocesses; ++r) {
-                    (void) MPI_Recv(buffer, MPIBUFSIZE * 3, MPI_DOUBLE, r, iter, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                    points_write(MPIBUFSIZE, buffer);
+        free(nremain);
+        free(buffer);
+#if defined(VIAFILE)
+    } else {
+        FILE* f = NULL;
+        char fname[STRBUFSIZE];
+
+        if (rank > 0) {
+            sprintf(fname, "nnbathy.rank%03d.tmp", rank);
+            f = fopen(fname, "w+");
+        }
+
+        ndone = 0;
+        while ((pout = preader_getpoint(pr)) != NULL) {
+            if (s->invariant)
+                minell_scalepoints(me, 1, pout);
+            else if (s->square)
+                points_scale(1, pout, k);
+
+            if (s->linear)
+                lpi_interpolate_point(interpolator, pout);
+            else
+                nnpi_interpolate_point(interpolator, pout);
+
+            if (s->invariant)
+                minell_rescalepoints(me, 1, pout);
+            else if (s->square)
+                points_scale(1, pout, 1.0 / k);
+
+            if (rank == 0)
+                points_write(1, pout);
+            else
+                fwrite(pout, 1, sizeof(point), f);
+
+            if (s->npoints > 0 && rank == 0) {
+                int quant = s->npoints / 1000;
+
+                if (quant == 0 || ndone % quant == 0) {
+                    char percent[STRBUFSIZE];
+
+                    snprintf(percent, STRBUFSIZE, "  %5.1f%% done\r", 100.0 * ndone / s->npoints);
+                    fprintf(stderr, "%s", percent);
+                    fflush(stderr);
                 }
-            } else
-                (void) MPI_Send(buffer, MPIBUFSIZE * 3, MPI_DOUBLE, 0, iter, MPI_COMM_WORLD);
-            nsent = iter;
+            }
+            ndone++;
         }
-    }
-
-    /*
-     * write remaining results
-     */
-    nremain = calloc(nprocesses, sizeof(int));
-    nremain_total = ndone - nsent * nactiveprocesses * MPIBUFSIZE;
-    for (r = firstactiveprocess; r < nprocesses; ++r) {
-        if (nremain_total >= MPIBUFSIZE) {
-            nremain[r] = MPIBUFSIZE;
-            nremain_total -= MPIBUFSIZE;
+        if (rank > 0) {
+            fclose(f);
+            (void) MPI_Send(NULL, 0, MPI_INT, 0, rank, MPI_COMM_WORLD);
         } else {
-            nremain[r] = nremain_total;
-            nremain_total = 0;
+            /*
+             * write temporary files to stdout
+             */
+            for (r = 1; r < nprocesses; ++r) {
+                void* buffer = malloc(sizeof(point) * BUFSIZE);
+                int len;
+
+                (void) MPI_Recv(NULL, 0, MPI_INT, r, r, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                sprintf(fname, "nnbathy.rank%03d.tmp", r);
+                f = fopen(fname, "r");
+                while ((len = fread(buffer, sizeof(point), BUFSIZE, f)) > 0)
+                    points_write(len, buffer);
+                fclose(f);
+                file_delete(fname);
+                free(buffer);
+            }
+            fflush(stdout);
         }
     }
-    if (rank == 0) {
-        points_write(nremain[0], buffer);
-        for (r = 1; r < nprocesses; ++r) {
-            (void) MPI_Recv(buffer, nremain[r] * 3, MPI_DOUBLE, r, nsent + 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            points_write(nremain[r], buffer);
-        }
-        fflush(stdout);
-    } else
-        (void) MPI_Send(buffer, nremain[rank] * 3, MPI_DOUBLE, 0, nsent + 1, MPI_COMM_WORLD);
+#endif                          /* VIAFILE */
 
-    free(nremain);
-    free(buffer);
     if (s->npoints > 0 && rank == 0)
         fprintf(stderr, "                \r");
 
@@ -911,4 +1011,4 @@ int main(int argc, char* argv[])
 
     return 0;
 }
-#endif
+#endif                          /* MPI */

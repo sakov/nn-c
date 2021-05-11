@@ -16,6 +16,8 @@ INSTALL_PROGRAM = ${INSTALL}
 INSTALL_DATA = ${INSTALL} -m 644
 
 MPI = yes
+# only matters if MPI = yes
+VIAFILE = no
 CC = gcc
 CFLAGS = -g -O2 -Wall -pedantic -D_GNU_SOURCE -std=c99
 CFLAGS_TRIANGLE = -O2 -w -ffloat-store
@@ -52,8 +54,9 @@ nn.h\
 nnpi.h\
 preader.h
 
-SRC_UTILS=\
+SRC_NNBATHY=\
 nnbathy.c
+HDR_NNBATHY =
 
 PROGRAMS =\
 minell\
@@ -76,12 +79,17 @@ delaunay.o: override CC = mpicc
 delaunay.o: override CFLAGS += -DMPI -DUSE_SHMEM
 nnbathy: override CC = mpicc
 nnbathy: override CFLAGS += -DMPI -DUSE_SHMEM
+ifeq ($(VIAFILE), yes)
+nnbathy: override CFLAGS += -DVIAFILE
+SRC_NNBATHY += distribute.c
+HDR_NNBATHY += distribute.h
+endif
 else
 nnbathy: override CFLAGS += -DNN_SERIAL
 endif
 
-nnbathy: libnn.a nnbathy.c
-	$(CC) -o nnbathy nnbathy.c $(CFLAGS) -I. $(LDFLAGS) libnn.a $(MLIB)
+nnbathy: libnn.a nnbathy.c $(SRC_NNBATHY) $(HDR_NNBATHY)
+	$(CC) -o nnbathy $(SRC_NNBATHY) $(CFLAGS) -I. $(LDFLAGS) libnn.a $(MLIB)
 
 standalone: override LDFLAGS+=-static
 standalone: $(PROGRAMS)
@@ -154,5 +162,5 @@ ex6clean:
 distclean: clean configclean ex1clean ex2clean ex3clean ex4clean ex5clean ex6clean
 
 indent:
-	indent -T FILE -T NN_ALGORITHM -T point -T delaunay -Tdsearch -T lpi -T nnpi -T nnhpi -T indexedpoint -T nnai -T ht_bucket -T hashtable -T istack -T triangle -T triangle_neighbours -T circle -T nn_weights -T lweights -T minell -T specs -T reader -T preader -T grid $(SRC_LIB) $(SRC_UTILS) $(HDR_LIB)
+	indent -T FILE -T NN_ALGORITHM -T point -T delaunay -Tdsearch -T lpi -T nnpi -T nnhpi -T indexedpoint -T nnai -T ht_bucket -T hashtable -T istack -T triangle -T triangle_neighbours -T circle -T nn_weights -T lweights -T minell -T specs -T reader -T preader -T grid $(SRC_LIB) $(SRC_NNBATHY) $(HDR_NNBATHY)
 	rm -f *~
