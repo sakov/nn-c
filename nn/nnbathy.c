@@ -21,6 +21,10 @@
  *                 01/06/2006: moved flags and other command-line input into
  *                             structure "specs"
  *                 05/05/2021: added MPI version
+ *                 11/05/2021: added another communication algorithm when worker
+ *                             CPUs write results to "tiles" on disk rather than
+ *                             send them to master; it activates by defining
+ *                             VIAFILE
  *
  *****************************************************************************/
 
