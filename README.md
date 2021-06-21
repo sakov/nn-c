@@ -14,7 +14,8 @@ independent development. You may see a comparison of performance of a (rather ol
 
 **nn** is coded for robustness (to handle degenerate data) and scalability (to handle millions of data points), subject 
 to using double precision calculations. For the underlying Delaunay triangulation it calls exact arithmetic code from 
-[triangle](http://www.cs.cmu.edu/~quake/triangle.html).
+[triangle](http://www.cs.cmu.edu/~quake/triangle.html). From v.2 it is possible to run **nnbathy** on multiple CPUs with
+the triangulation stored in shared memory.
 
 
 Checkout **nn** by running `git clone https://github.com/sakov/nn-c` or `svn checkout https://github.com/sakov/nn-c`.
