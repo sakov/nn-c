@@ -416,13 +416,6 @@ void delaunay_destroy(delaunay* d)
 
 /**
  */
-size_t delaunay_getmemsize(delaunay* d)
-{
-    return d->ntriangles * (sizeof(triangle) + sizeof(triangle_neighbours) + sizeof(circle) + sizeof(int) * 3) + d->npoints * (sizeof(int) + sizeof(int*));
-}
-
-/**
- */
 dsearch* dsearch_build(delaunay* d)
 {
     dsearch* ds = calloc(1, sizeof(dsearch));

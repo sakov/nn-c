@@ -1,3 +1,5 @@
+v. 2.0.6,  20 July 2021
+        -- Got rid of redundant delaunay_getmemsize() in delaynay.c.
 v. 2.0.5,  11 May 2021
 	-- Added 2nd parallelisation algorithm to nnbathy.c, activated by
 	   -DVIAFILE.
