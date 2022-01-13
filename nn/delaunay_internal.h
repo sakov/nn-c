@@ -39,7 +39,6 @@ struct delaunay {
     double ymax;
 
     int ntriangles;
-    int nedges;
 
     triangle* triangles;
     circle* circles;
@@ -50,8 +49,6 @@ struct delaunay {
     int* point_triangles;       /* point_triangles[point_triangles_offset[i]
                                  * + j] is the index of j-th triangle i-th
                                  * point belongs to */
-    int* edges;                 /* n-th edge is formed by points[edges[n*2]]
-                                 * and points[edges[n*2+1]] */
 
 #if defined(USE_SHMEM)
     MPI_Win sm_win_delaunaydata;

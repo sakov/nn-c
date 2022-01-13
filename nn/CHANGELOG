@@ -1,3 +1,6 @@
+v. 2.0.7,  13 January 2022
+        -- Removed redundant field "edges" from struct delaunay. Replaced
+           tio_init() by memsetting to 0.
 v. 2.0.6,  20 July 2021
         -- Got rid of redundant delaunay_getmemsize() in delaynay.c.
 v. 2.0.5,  11 May 2021

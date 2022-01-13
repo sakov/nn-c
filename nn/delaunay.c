@@ -35,7 +35,6 @@
 #include <float.h>
 #include "triangle.h"
 #include "istack_internal.h"
-#include "nan.h"
 #include "nn.h"
 #include "nncommon.h"
 #include "delaunay_internal.h"
@@ -67,33 +66,6 @@ extern int make_iso_compilers_happy;
 #define N_SEARCH_TURNON 20
 #define N_FLAGS_TURNON 1000
 #define N_FLAGS_INC 100
-
-static void tio_init(struct triangulateio* tio)
-{
-    tio->pointlist = NULL;
-    tio->pointattributelist = NULL;
-    tio->pointmarkerlist = NULL;
-    tio->numberofpoints = 0;
-    tio->numberofpointattributes = 0;
-    tio->trianglelist = NULL;
-    tio->triangleattributelist = NULL;
-    tio->trianglearealist = NULL;
-    tio->neighborlist = NULL;
-    tio->numberoftriangles = 0;
-    tio->numberofcorners = 0;
-    tio->numberoftriangleattributes = 0;
-    tio->segmentlist = 0;
-    tio->segmentmarkerlist = NULL;
-    tio->numberofsegments = 0;
-    tio->holelist = NULL;
-    tio->numberofholes = 0;
-    tio->regionlist = NULL;
-    tio->numberofregions = 0;
-    tio->edgelist = NULL;
-    tio->edgemarkerlist = NULL;
-    tio->normlist = NULL;
-    tio->numberofedges = 0;
-}
 
 static void tio_destroy(struct triangulateio* tio)
 {
@@ -155,11 +127,9 @@ static void tio2delaunay(struct triangulateio* tio, delaunay* d, void* data)
         assert(tio->pointlist[2 * d->npoints - 2] == d->points[d->npoints - 1].x && tio->pointlist[2 * d->npoints - 1] == d->points[d->npoints - 1].y);
 
         d->ntriangles = tio->numberoftriangles;
-        d->nedges = tio->numberofedges;
     }
 #if defined(USE_SHMEM)
     MPI_Bcast(&d->ntriangles, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&d->nedges, 1, MPI_INT, 0, MPI_COMM_WORLD);
 #endif
 
     d->triangles = data;
@@ -168,7 +138,6 @@ static void tio2delaunay(struct triangulateio* tio, delaunay* d, void* data)
     d->n_point_triangles = (int*) &d->circles[d->ntriangles];
     d->point_triangles_offset = (int*) &d->n_point_triangles[d->npoints];
     d->point_triangles = (int*) &d->point_triangles_offset[d->npoints];
-    d->edges = &d->point_triangles[d->ntriangles * 3];
 
     if (tio != NULL) {
         if (nn_verbose)
@@ -215,7 +184,6 @@ static void tio2delaunay(struct triangulateio* tio, delaunay* d, void* data)
                 d->n_point_triangles[vid]++;
             }
         }
-        memcpy(d->edges, tio->edgelist, d->nedges * 2 * sizeof(int));
     }
 #if defined(USE_SHMEM)
     MPI_Win_fence(0, d->sm_win_delaunaydata);
@@ -225,7 +193,7 @@ static void tio2delaunay(struct triangulateio* tio, delaunay* d, void* data)
 
 static size_t delaunay_getdatasize(struct triangulateio* tio)
 {
-    return tio->numberoftriangles * (sizeof(triangle) + sizeof(triangle_neighbours) + sizeof(circle) + sizeof(int) * 3) + tio->numberofpoints * sizeof(int) * 2 + tio->numberofedges * sizeof(int) * 2;
+    return tio->numberoftriangles * (sizeof(triangle) + sizeof(triangle_neighbours) + sizeof(circle) + sizeof(int) * 3) + tio->numberofpoints * sizeof(int) * 2;
 }
 
 /* Builds Delaunay triangulation of the given array of points.
@@ -257,7 +225,9 @@ delaunay* delaunay_build(int np, point points[], int ns, int segments[], int nh,
 
         assert(sizeof(REAL) == sizeof(double));
 
-        tio_init(&tio_in);
+        memset(&tio_in, 0, sizeof(struct triangulateio));
+        memset(&tio_out, 0, sizeof(struct triangulateio));
+
         tio_in.pointlist = malloc(np * 2 * sizeof(double));
         tio_in.numberofpoints = np;
         for (i = 0, j = 0; i < np; ++i) {
@@ -276,8 +246,6 @@ delaunay* delaunay_build(int np, point points[], int ns, int segments[], int nh,
             tio_in.numberofholes = nh;
             memcpy(tio_in.holelist, holes, nh * 2 * sizeof(double));
         }
-
-        tio_init(&tio_out);
 
         if (!nn_verbose)
             strcat(cmd, "Q");

@@ -5,7 +5,8 @@ uniformly distributed data.
 
 Example 1: uniformly distributed random measurements of Franke test fuction.
 
-Example 2: bathymetry from sonar.
+Example 2: bathymetry from sonar. This example also includes scripts for
+           testing parallel nnbathy.
 
 Example 3: degenerate case: both interpolation points and data points lie in
            the nodes of a rectangular grid.
