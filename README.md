@@ -10,7 +10,7 @@ independent development. You may see a comparison of performance of a (rather ol
   Quanfu Fan, Alon Efrat, Vladlen Koltun, Shankar Krishnan, and Suresh 
   Venkatasubramanian. Hardware-assisted Natural Neighbor Interpolation. 
   In Proc. 7th Workshop on Algorithm Engineering and Experiments (ALENEX), 2005.
-  [pdf](http://nn-c.googlecode.com/files/fan05a.pdf)
+  [pdf](https://www.researchgate.net/publication/220981984_Hardware-Assisted_Natural_Neighbor_Interpolation)
 
 **nn** is coded for robustness (to handle degenerate data) and scalability (to handle millions of data points), subject 
 to using double precision calculations. For the underlying Delaunay triangulation it calls exact arithmetic code from 
