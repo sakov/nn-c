@@ -18,4 +18,4 @@ to using double precision calculations. For the underlying Delaunay triangulatio
 triangulation stored in shared memory.
 
 
-Checkout **nn** by running `git clone https://github.com/sakov/nn-c` or `svn checkout https://github.com/sakov/nn-c`.
+Checkout **nn** by running `git clone https://github.com/sakov/nn-c`.
