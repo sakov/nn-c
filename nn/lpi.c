@@ -73,7 +73,7 @@ lpi* lpi_build(delaunay* d)
         double y12 = y1 - y2;
         double z12 = z1 - z2;
 
-        if (y12 != 0.0) {
+        if (fabs(y12) > fabs(x12)) {
             double y0212 = y02 / y12;
 
             lw->w[0] = (z02 - z12 * y0212) / (x02 - x12 * y0212);
