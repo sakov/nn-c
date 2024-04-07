@@ -126,7 +126,7 @@ install: all installdirs
 	   $(INSTALL_DATA) $$i $(libdir)/$$i; \
 	done
 
-	for i in nn.h; do \
+	for i in nn.h delaunay.h; do \
 	   $(INSTALL_DATA) $$i $(includedir); \
 	done
 
