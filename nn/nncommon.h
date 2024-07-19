@@ -11,6 +11,5 @@ int circle_build1(circle* c, point* p0, point* p1, point* p2);
 int circle_build2(circle* c, point* p0, point* p1, point* p2);
 int circle_contains(circle* c, point* p);
 void nn_quit(char* format, ...);
-int str2double(char* token, double* value);
 
 #endif /* _NN_COMMON_H */

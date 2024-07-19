@@ -411,7 +411,7 @@ void points_generate(double xmin, double xmax, double ymin, double ymax, int nx,
     }
 }
 
-int str2double(char* token, double* value)
+static int str2double(char* token, double* value)
 {
     char* end = NULL;
 

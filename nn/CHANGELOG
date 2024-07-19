@@ -1,3 +1,5 @@
+v. 2.0.9,  19 July 2024
+        -- Made str2double() static everywhere.
 v. 2.0.8,  22 March 2024
         -- Corrected lpi_build() to improve handling of nearly singular cases
            when y12 is nearly 0.

@@ -57,6 +57,25 @@ struct preader {
     reader* r;
 };
 
+static int str2double(char* token, double* value)
+{
+    char* end = NULL;
+
+    if (token == NULL) {
+        *value = NaN;
+        return 0;
+    }
+
+    *value = strtod(token, &end);
+
+    if (end == token) {
+        *value = NaN;
+        return 0;
+    }
+
+    return 1;
+}
+
 static grid* grid_create(double xmin, double xmax, double ymin, double ymax, int nx, int ny, int j1, int j2)
 {
     grid* g = NULL;
