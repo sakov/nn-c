@@ -102,7 +102,7 @@ libnn.a: triangle.o $(OBJ_LIB)
 nncommon-vulnerable.o: override CFLAGS+=$(CFLAGS_VULNERABLE)
 
 triangle.o: triangle.c triangle.h
-	$(CC) -c -DTRILIBRARY $(CFLAGS_TRIANGLE) -I. triangle.c
+	$(CC) -c -DTRILIBRARY -DANSI_DECLARATORS $(CFLAGS_TRIANGLE) -I. triangle.c
 
 tests: libnn.a $(TESTS)
 
